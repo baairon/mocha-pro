@@ -1,0 +1,413 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Result file: one per unit and rung, with its counts, comparator, judge, mutants, call records and blockers",
+  "type": "object",
+  "required": [
+    "unit",
+    "rung",
+    "entry",
+    "route",
+    "judge",
+    "comparator",
+    "original",
+    "port",
+    "seeds",
+    "cases",
+    "values",
+    "branches",
+    "value_classes",
+    "sites",
+    "mutants",
+    "call_records",
+    "stand_ins",
+    "harness_stand_ins",
+    "qualifiers",
+    "not_rebuilt",
+    "commands",
+    "measured_at",
+    "blockers"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "unit": {
+      "type": "string"
+    },
+    "rung": {
+      "enum": [
+        "K-PARITY",
+        "R-PARITY",
+        "REC-PARITY",
+        "SELECTION-PARITY",
+        "PLAN-PARITY",
+        "E-PARITY",
+        null
+      ],
+      "description": "null is allowed for a unit that carries pairing and calibration only; such a unit is never a parity unit"
+    },
+    "entry": {
+      "type": "string"
+    },
+    "route": {
+      "type": "string"
+    },
+    "judge": {
+      "type": "object",
+      "required": [
+        "engine",
+        "manual_follows",
+        "cross_checked"
+      ],
+      "properties": {
+        "engine": {
+          "type": "string"
+        },
+        "manual_follows": {
+          "type": "boolean"
+        },
+        "cross_checked": {
+          "type": "boolean"
+        }
+      }
+    },
+    "comparator": {
+      "type": "object",
+      "required": [
+        "tolerance_ulp",
+        "nan_rule",
+        "signed_zero"
+      ],
+      "properties": {
+        "tolerance_ulp": {
+          "type": "number"
+        },
+        "nan_rule": {
+          "type": "string"
+        },
+        "signed_zero": {
+          "type": "string"
+        }
+      }
+    },
+    "original": {
+      "type": "object",
+      "required": [
+        "artifact_sha256",
+        "data_sources"
+      ],
+      "properties": {
+        "artifact_sha256": {
+          "type": "string"
+        },
+        "data_sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "port": {
+      "type": "object",
+      "required": [
+        "source_sha256",
+        "build_profile"
+      ],
+      "properties": {
+        "source_sha256": {
+          "type": "string"
+        },
+        "build_profile": {
+          "type": "string"
+        }
+      }
+    },
+    "seeds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cases": {
+      "type": "object",
+      "required": [
+        "in_contract",
+        "compared",
+        "identical",
+        "differing",
+        "out_of_contract",
+        "blocked",
+        "logic_parity"
+      ],
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "values": {
+      "type": "object",
+      "required": [
+        "compared",
+        "differing",
+        "max_ulp",
+        "nan_class_equal_payload_differs"
+      ],
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "branches": {
+      "type": "object",
+      "required": [
+        "total",
+        "both_ways",
+        "unreached"
+      ],
+      "properties": {
+        "total": {
+          "type": "integer"
+        },
+        "both_ways": {
+          "type": "integer"
+        },
+        "unreached": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "site",
+              "reason"
+            ],
+            "properties": {
+              "site": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "value_classes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sites": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "site",
+          "killed_by_mutant"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "fma",
+              "estimate",
+              "conversion"
+            ]
+          },
+          "site": {
+            "type": "string"
+          },
+          "killed_by_mutant": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "mutants": {
+      "type": "object",
+      "required": [
+        "total",
+        "killed",
+        "control_matches_release",
+        "survivors"
+      ],
+      "properties": {
+        "total": {
+          "type": "integer"
+        },
+        "killed": {
+          "type": "integer"
+        },
+        "control_matches_release": {
+          "type": "boolean"
+        },
+        "survivors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "argument": {
+                "type": "string"
+              },
+              "reviewed_by": {
+                "type": "string"
+              },
+              "killed_by_added_case": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "call_records": {
+      "type": "object",
+      "required": [
+        "compared",
+        "matching",
+        "not_recordable"
+      ],
+      "properties": {
+        "compared": {
+          "type": "integer"
+        },
+        "matching": {
+          "type": "integer"
+        },
+        "not_recordable": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "stand_ins": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "harness_stand_ins": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "qualifiers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "not_rebuilt": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "measured_at": {
+      "type": "string"
+    },
+    "blockers": {
+      "type": "array",
+      "description": "Each entry: \"G1: <condition>\" (gate id, condition), then ' | record: <path> sha256: <64 hex>' naming the call record that shows it. Empty list means not blocked.",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_-]+: .+ \\| record: \\S+ sha256: [0-9a-f]{64}$"
+      }
+    },
+    "contract": {
+      "type": "object",
+      "properties": {
+        "max_values_per_case": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "value_classes_allowed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Declared in the unit README contract; floor met only when non-empty and every member is in value_classes"
+    },
+    "pairing": {
+      "type": "object",
+      "required": [
+        "params_original",
+        "params_rewrite",
+        "exact",
+        "normalized",
+        "unmatched"
+      ],
+      "properties": {
+        "params_original": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "params_rewrite": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "exact": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "normalized": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unmatched": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "required": [
+        "boots",
+        "records_identical",
+        "dumps_identical",
+        "record_sha256"
+      ],
+      "properties": {
+        "boots": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "records_identical": {
+          "type": "boolean"
+        },
+        "dumps_identical": {
+          "type": "boolean"
+        },
+        "record_sha256": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "description": "one per boot"
+        }
+      }
+    }
+  }
+}

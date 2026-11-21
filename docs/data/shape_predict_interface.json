@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "name": "shape-predict",
+  "summary": "reads one case file and writes the predicted dump to standard output",
+  "arguments": [
+    {"position": 1, "name": "CASE", "required": true, "meaning": "path of one case file, read as UTF-8 text"},
+    {"position": 2, "name": "extra", "required": false, "meaning": "every argument after the first is ignored"}
+  ],
+  "streams": {
+    "stdin": "not read",
+    "stdout": "the dump bytes on exit 0; empty on exit 1 for a refused case and on exit 2; on exit 1 for an unwritable standard output, part of the dump may have been written",
+    "stderr": "empty on exit 0 (cargo's own progress lines aside, under cargo run); exactly one line on exit 1 for a refused case and on exit 2; on exit 1 for an unwritable standard output, unspecified and not pinned by a test"
+  },
+  "dump_form": "shape-1",
+  "determinism": "the dump on stdout is the same bytes as the library's predicted dump for the same case text",
+  "unpinned_paths": [
+    {"path": "unwritable_stdout", "code": 1, "stdout": "the dump may be partly written", "stderr": "unspecified"}
+  ],
+  "exit_codes": [
+    {"code": 0, "scenario": "valid", "stderr_kind": "empty", "stderr_line": ""},
+    {"code": 1, "scenario": "bad_line", "stderr_kind": "prefix", "stderr_line": "error: line N: REASON", "stderr_prefix": "error: line "},
+    {"code": 1, "scenario": "refused_contour", "stderr_kind": "prefix", "stderr_line": "error: REASON", "stderr_prefix": "error: "},
+    {"code": 2, "scenario": "no_argument", "stderr_kind": "exact", "stderr_line": "usage: shape-predict <case.txt>", "stderr_prefix": "usage: shape-predict <case.txt>\n"},
+    {"code": 2, "scenario": "missing_file", "stderr_kind": "prefix", "stderr_line": "read failed: REASON", "stderr_prefix": "read failed: "},
+    {"code": 2, "scenario": "non_utf8_file", "stderr_kind": "prefix", "stderr_line": "read failed: REASON", "stderr_prefix": "read failed: "}
+  ]
+}

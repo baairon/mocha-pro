@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "name": "mask-validate",
+  "summary": "checks one mask sequence, a mask-1 manifest and the frame files it lists, and reports the first fault it finds",
+  "arguments": [
+    {"position": 1, "name": "SEQUENCE", "required": true, "meaning": "a folder that holds manifest.txt, or the path of a manifest file; the frame files are read from the folder of the manifest"},
+    {"position": 2, "name": "extra", "required": false, "meaning": "not allowed: two or more arguments are a usage error, exit 2"}
+  ],
+  "streams": {
+    "stdin": "not read",
+    "stdout": "the success line on exit 0; empty on exit 1 for an invalid sequence and on exit 2; on exit 1 for an unwritable standard output, the success line may be partly written",
+    "stderr": "empty on exit 0; exactly one line on exit 1 for an invalid sequence and on exit 2; on exit 1 for an unwritable standard output, unspecified and not pinned by a test"
+  },
+  "manifest_form": "mask-1",
+  "manifest_name": "manifest.txt",
+  "frame_names": "frame_######.pgm",
+  "frame_form": "PGM, binary form P5, header exactly P5 LF width SP height LF maxval LF, maxval 255 for depth 8 or 65535 for depth 16, 16 bit samples most significant byte first",
+  "hash": "SHA-256 of the whole frame file, as 64 lower-case hexadecimal digits",
+  "success_line": "ok format=mask-1 frames=N first=F width=W height=H depth=D",
+  "error_line": "error: WORD: DETAIL, where DETAIL is manifest.txt for manifest_missing, line 1 for manifest_format, line N for manifest_syntax and manifest_value, the frame file name for frame_missing, frame_header, frame_size, frame_depth, frame_truncated, frame_trailing, frame_hash and frame_extra, and the frame file name or . for the folder for frame_read",
+  "check_order": "the manifest line by line; then each frame in index order: present, header, size, depth, length, hash; then frame-named files the manifest does not list",
+  "determinism": "the same files give the same exit code and the same bytes on both streams, except the text after read failed: and the unpinned paths; on a file system that ignores case, a frame file name that differs only in case is found under the listed name",
+  "reasons": [
+    {"word": "manifest_missing", "code": 1, "detail": "manifest.txt", "means": "the folder named holds no file manifest.txt"},
+    {"word": "manifest_syntax", "code": 1, "detail": "line N", "means": "a manifest line breaks the form"},
+    {"word": "manifest_format", "code": 1, "detail": "line 1", "means": "the first line names a form other than mask-1"},
+    {"word": "manifest_value", "code": 1, "detail": "line N", "means": "a value in its grammar but out of its range"},
+    {"word": "frame_missing", "code": 1, "detail": "FILE", "means": "a listed frame file is absent or not a regular file"},
+    {"word": "frame_header", "code": 1, "detail": "FILE", "means": "a frame file does not begin with the canonical header"},
+    {"word": "frame_size", "code": 1, "detail": "FILE", "means": "the width or height of a frame differs from the manifest"},
+    {"word": "frame_depth", "code": 1, "detail": "FILE", "means": "the maxval of a frame differs from the depth of the manifest"},
+    {"word": "frame_truncated", "code": 1, "detail": "FILE", "means": "a frame file is shorter than its header and samples"},
+    {"word": "frame_trailing", "code": 1, "detail": "FILE", "means": "a frame file has bytes after its samples"},
+    {"word": "frame_hash", "code": 1, "detail": "FILE", "means": "the SHA-256 of a frame file differs from the manifest"},
+    {"word": "frame_extra", "code": 1, "detail": "FILE", "means": "the folder holds a frame-named file that the manifest does not list"},
+    {"word": "frame_read", "code": 1, "detail": "FILE or .", "means": "a present frame file, or the folder listing, cannot be read"}
+  ],
+  "unpinned_paths": [
+    {"path": "frame_read", "code": 1, "stdout": "empty", "stderr": "error: frame_read: FILE, or error: frame_read: ."},
+    {"path": "unreadable_manifest", "code": 2, "stdout": "empty", "stderr": "read failed: REASON"},
+    {"path": "unwritable_stdout", "code": 1, "stdout": "the success line may be partly written", "stderr": "unspecified"}
+  ],
+  "exit_codes": [
+    {"code": 0, "scenario": "valid_folder", "reason": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "exact", "stdout": "ok format=mask-1 frames=3 first=0 width=4 height=2 depth=8\n"},
+    {"code": 0, "scenario": "valid_manifest_path", "reason": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "exact", "stdout": "ok format=mask-1 frames=3 first=0 width=4 height=2 depth=8\n"},
+    {"code": 1, "scenario": "manifest_missing", "reason": "manifest_missing", "stderr_kind": "exact", "stderr": "error: manifest_missing: manifest.txt\n", "stdout_kind": "empty", "stdout": ""},
+    {"code": 1, "scenario": "manifest_syntax", "reason": "manifest_syntax", "stderr_kind": "exact", "stderr": "error: manifest_syntax: line 4\n", "stdout_kind": "empty", "stdout": ""},
+    {"code": 1, "scenario": "manifest_format", "reason": "manifest_format", "stderr_kind": "exact", "stderr": "error: manifest_format: line 1\n", "stdout_kind": "empty", "stdout": ""},
+    {"code": 1, "scenario": "manifest_value", "reason": "manifest_value", "stderr_kind": "exact", "stderr": "error: manifest_value: line 6\n", "stdout_kind": "empty", "stdout": ""},
+    {"code": 1, "scenario": "frame_missing", "reason": "frame_missing", "stderr_kind": "exact", "stderr": "error: frame_missing: frame_000001.pgm\n", "stdout_kind": "empty", "stdout": ""},
+    {"code": 1, "scenario": "frame_header", "reason": "frame_header", "stderr_kind": "exact", "stderr": "error: frame_header: frame_000000.pgm\n", "stdout_kind": "empty", "stdout": ""},
+    {"code": 1, "scenario": "frame_size", "reason": "frame_size", "stderr_kind": "exact", "stderr": "error: frame_size: frame_000002.pgm\n", "stdout_kind": "empty", "stdout": ""},
+    {"code": 1, "scenario": "frame_depth", "reason": "frame_depth", "stderr_kind": "exact", "stderr": "error: frame_depth: frame_000001.pgm\n", "stdout_kind": "empty", "stdout": ""},
+    {"code": 1, "scenario": "frame_truncated", "reason": "frame_truncated", "stderr_kind": "exact", "stderr": "error: frame_truncated: frame_000002.pgm\n", "stdout_kind": "empty", "stdout": ""},
+    {"code": 1, "scenario": "frame_trailing", "reason": "frame_trailing", "stderr_kind": "exact", "stderr": "error: frame_trailing: frame_000000.pgm\n", "stdout_kind": "empty", "stdout": ""},
+    {"code": 1, "scenario": "frame_hash", "reason": "frame_hash", "stderr_kind": "exact", "stderr": "error: frame_hash: frame_000001.pgm\n", "stdout_kind": "empty", "stdout": ""},
+    {"code": 1, "scenario": "frame_extra", "reason": "frame_extra", "stderr_kind": "exact", "stderr": "error: frame_extra: frame_000003.pgm\n", "stdout_kind": "empty", "stdout": ""},
+    {"code": 2, "scenario": "no_argument", "reason": "none", "stderr_kind": "exact", "stderr": "usage: mask-validate <folder|manifest.txt>\n", "stdout_kind": "empty", "stdout": ""},
+    {"code": 2, "scenario": "two_arguments", "reason": "none", "stderr_kind": "exact", "stderr": "usage: mask-validate <folder|manifest.txt>\n", "stdout_kind": "empty", "stdout": ""},
+    {"code": 2, "scenario": "missing_path", "reason": "none", "stderr_kind": "prefix", "stderr": "read failed: ", "stdout_kind": "empty", "stdout": ""}
+  ]
+}

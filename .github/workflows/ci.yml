@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  # Every push to main runs, so main always carries a check of its own, and so
+  # does every pull request.
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# On a pull request a new push supersedes the run in flight: only the branch's
+# latest commit needs a verdict. A push to main is never cancelled and never
+# waits behind another one: each is a group of its own, so commits pushed one
+# after another all keep a result of their own.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  test:
+    name: tests on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      # One platform failing should never hide the result on the others.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (resolved 2026-11-17)
+
+      - uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master (resolved 2026-11-17)
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3 (resolved 2026-11-17)
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0 (resolved 2026-11-17)
+        with:
+          python-version: "3.12"
+
+      - run: cargo build --locked --all-targets
+        id: build
+
+      # Without --no-fail-fast cargo stops at the first failing test binary.
+      # Likewise every step below runs once the build passed, even after an
+      # earlier step failed, so one run shows every failing check; the job
+      # still fails.
+      - run: cargo test --locked --no-fail-fast
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+
+      # The Python tools need no packages beyond the standard library to
+      # compile, so a syntax slip anywhere in them fails here.
+      - run: python -m compileall -q tools
+        if: ${{ !cancelled() }}
+
+      # The tests of the three tools.
+      - run: python -I tools/test_status.py
+        if: ${{ !cancelled() }}
+
+      - run: python -I tools/test_gen_docs.py
+        if: ${{ !cancelled() }}
+
+      - run: python -I tools/test_check_docs.py
+        if: ${{ !cancelled() }}
+
+      # The generated figures and tables equal what the generator writes from
+      # the result files.
+      - run: python -I tools/gen_docs.py --check
+        if: ${{ !cancelled() }}
+
+      # Wording rules, dashes, links, ASCII, process words and scope. The checks
+      # that read a term list kept outside the repository print NOT RUN here,
+      # as sapphire's absent-peer parts do; every other check runs and fails
+      # the step on a finding.
+      - run: python -I tools/check_docs.py
+        if: ${{ !cancelled() }}
+
+  lints:
+    name: fmt and clippy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (resolved 2026-11-17)
+
+      - uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master (resolved 2026-11-17)
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3 (resolved 2026-11-17)
+
+      # Formatting, then lints with every warning an error.
+      - run: cargo fmt --all -- --check
+
+      - run: cargo clippy --locked --all-targets -- -D warnings

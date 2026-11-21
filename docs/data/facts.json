@@ -1,0 +1,18 @@
+{
+  "case_floor": {
+    "source": "tools/status.py CASE_FLOOR",
+    "value": "150"
+  },
+  "result_files": {
+    "source": "parity/*/results/summary.json",
+    "value": []
+  },
+  "status_line": {
+    "source": "tools/status.py totals over the result files, one part per rung",
+    "value": "method and preparation only: 0 cases compared"
+  },
+  "units_total": {
+    "source": "count of parity/*/results/summary.json",
+    "value": "0"
+  }
+}
