@@ -69,7 +69,7 @@ The heavy work, builds, emulation and grids, happens on one Linux machine, which
 
 The first comparison is of parameter tables, not of outputs. When the plug-in sets itself up, it registers its parameters with the host: for each one an id, a kind, a name, a default, a range and flags. The harness reads that table from the emulated original. Before the original first runs, the rewrite's prediction of the same table is written and sealed, with the SHA-256 of the file and a UTC time, so that no prediction can be adjusted to what the run shows. A sealed file is never edited, and a row changed after the original's output has been seen is void.
 
-The pairing then matches each predicted row with at most one observed row: by the exact name first, then by a normalized name, otherwise not at all. Defaults, ranges and flags are compared as bits, never as printed digits, and neither side is rewritten before the comparison. A prediction left unknown is never read as zero; it is not scored. The pairing passes only when nothing is unmatched on either side, and the field differences are counted beside it. `crates/effect-params` holds the rewrite's side of this: the table format and the comparison ([reference: the pairing](reference.md#the-pairing)).
+The pairing then matches each predicted row with at most one observed row: by the host parameter id where both rows carry one, otherwise by the exact name, then by a normalized name, otherwise not at all. Defaults, ranges and flags are compared as bits, never as printed digits, and neither side is rewritten before the comparison. A prediction left unknown is never read as zero; it is not scored. The pairing passes only when nothing is unmatched on either side, and the field differences are counted beside it. `crates/effect-params` holds the rewrite's side of this: the table format and the comparison ([reference: the pairing](reference.md#the-pairing)).
 
 The calibration boots the original twice, in separate processes, and compares the two call records and the two dumps of what it registered, byte for byte. A difference there means the harness is not deterministic, and nothing it produces is used as a reference until the cause is found.
 
@@ -120,6 +120,8 @@ Two of these conditions close gaps that the case counts alone would leave open. 
 
 The rung label is computed apart from the status. There is no label when the tolerance is not 0 or no case is compared. A call-record rung is labelled when call records were compared and all match. An output rung is labelled only with 0 differing cases and values, and its full label needs the evidence floor of the method: enough cases and values for the size of a case, every branch taken both ways or unreached with a reason, every allowed value class present, every listed arithmetic site killed by a mutant, the survivor rule, a control build that matches the release build, and no suspended stand-in. A file that misses a floor item gets the thin form of the label with the unmet items listed. The exact numbers are in `tools/status.py`. A re-run counts only when it is dated after the result.
 
+**Rows that are read, not compared.** A unit may state, in a `rows_basis` block of its result file, that some of its rows were only read from a specification and that the rest were seen in a partial observation of the original. Such a unit reads `Read and partly observed`, carries the fixed label `partial observation, not a result of record`, has no rung label and counts toward no total of matching units, whatever its other fields say.
+
 ### Wording
 
 - Every factual line is MEASURED, which names the result file that holds the number, or INFERRED, which means specified or reasoned.
@@ -152,11 +154,17 @@ The harness-wide stand-ins the harness is built to apply to every run. The harne
 - **Stacks and threads.** The main thread's stack is 1 MiB, the stand-in value of [twixtor's harness](https://github.com/baairon/twixtor/blob/8087d06ac43023f954de2cc58583b132a3243ff4/parity/harness/README.md#stand-ins) for a host value that is not known, and threads switch only when one waits, in one reproducible order.
 - **Time and randomness.** Never the machine's own: a time read stops the run until a fixed clock is registered, and random bytes come from a seeded stream.
 - **Host services.** A service on the declared list of absent ones is answered "not found"; a request with no declared answer stops the run.
-- **Licence, activation and machine identity.** Never answered: the run stops at such a call ([README: left out](../README.md#left-out)).
+- **Licence, activation and machine identity.** The licence module gets only the boundary answers listed in [README: left out](../README.md#left-out), none of them a licensed state or a machine identity value; any other call it makes to the host stops the run, and so does a licence or activation call from any other part of the original.
 
 ### The NaN rule
 
 Given two NaN operands, the emulator and a real x86 processor may keep different ones, and processor families also disagree on the NaN that an invalid operation creates. Since the references are made in the emulator, the rewrite's arithmetic takes the emulator's choice by default, and a result says so where a real processor could give another payload or sign. Which rule a unit uses, and whether NaNs are compared bit for bit or as a class at a tolerance of 0, is written in its result file.
+
+### Frames
+
+A unit whose outputs are frames may carry an optional `frames` block in its result file: the geometry set compared (width, height and depth, with the frames compared and identical at each), the totals, and a `reference_kind` of either `emulated original` or `owner supplied frames`. The comparator applies per depth. Depth 8 and 16 samples are unsigned integers: the tolerance counts integer code steps, and the NaN and signed zero rules do not apply because such a sample cannot hold either. Depth 32 samples are floats: the tolerance counts float ulps and the result file's `nan_rule` and `signed_zero` apply as written.
+
+Frames compared against `owner supplied frames` are never a judgement by the emulated original. Such a unit reads `Owner supplied frames`, never reaches Matches or Verified whatever its counts, prints the fixed label "owner supplied frames, not the original, not a parity result", and is listed on its own line apart from the rung lines. The block states counts only; the tools computing it are generic and say nothing about any plug-in.
 
 ### Caveats
 

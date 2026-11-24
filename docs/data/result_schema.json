@@ -408,6 +408,107 @@
           "description": "one per boot"
         }
       }
+    },
+    "rows_basis": {
+      "type": "object",
+      "description": "Optional. For a unit whose rows are partly READ from a specification and partly observed. Such a unit has the status 'Read and partly observed' and is never a parity unit, whatever its rung; a partial observation is not a result of record.",
+      "required": [
+        "rows_total",
+        "rows_read",
+        "rows_observed",
+        "observation_label"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "rows_total": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rows_read": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "rows with no observation, known from the specification only"
+        },
+        "rows_observed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "rows observed (a partial observation); rows_read + rows_observed must equal rows_total"
+        },
+        "observation_label": {
+          "const": "partial observation, not a result of record"
+        }
+      }
+    },
+    "frames": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional. For a unit whose outputs are frames. Absent for every other unit. Comparator at each depth: depth 8 and 16 samples are unsigned integers, so comparator.tolerance_ulp counts integer code steps (a whole number) and the NaN and signed zero rules do not apply; depth 32 samples are floats, so tolerance_ulp counts float ulps and comparator.nan_rule and comparator.signed_zero apply as written. reference_kind 'owner supplied frames' can never reach the Matches or Verified tiers; the status prints its own fixed label.",
+      "required": [
+        "reference_kind",
+        "geometries",
+        "frames_compared",
+        "frames_identical"
+      ],
+      "properties": {
+        "reference_kind": {
+          "enum": [
+            "emulated original",
+            "owner supplied frames"
+          ]
+        },
+        "geometries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "width",
+              "height",
+              "depth",
+              "frames_compared",
+              "frames_identical"
+            ],
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "depth": {
+                "enum": [
+                  8,
+                  16,
+                  32
+                ],
+                "description": "bits per sample: 8 rgba, 16 rgba64le, 32 gbrapf32le"
+              },
+              "frames_compared": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "the frame count compared at this geometry"
+              },
+              "frames_identical": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "description": "the geometry set compared, one entry per distinct width, height and depth; the frame count of an entry is its frames_compared"
+        },
+        "frames_compared": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "equals the sum of the entries; at least cases.compared"
+        },
+        "frames_identical": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "equals the sum of the entries; not above frames_compared"
+        }
+      }
     }
   }
 }

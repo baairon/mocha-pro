@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "name": "frame-tools",
+  "summary": "two generic tools for the raw frame streams of the handoff convention: frame-gen writes a synthetic pattern stream and frame-cmp compares two streams exactly, as bit patterns, at tolerance 0; neither computes any image operation",
+  "binaries": [
+    {"name": "frame-gen", "arguments": "--width W --height H --depth 8|16|32 --frames N [--fps N/D] [--pattern SPEC]; --help prints the usage on standard output and exits 0", "stdin": "not read", "stdout": "N whole frames, nothing else", "stderr": "empty on exit 0; exactly one line error: CODE: MESSAGE on a failure"},
+    {"name": "frame-cmp", "arguments": "--width W --height H --depth 8|16|32 [--fps N/D] [--frames N] [-v] A B; A and B are files, and one of them may be - for standard input; --help prints the usage on standard output and exits 0", "stdin": "read only when A or B is -", "stdout": "the report; with -v one line per frame present in both streams first", "stderr": "empty on exit 0 and 1; exactly one line error: CODE: MESSAGE on exit 2, 3 and 4"}
+  ],
+  "frame_contract": "frames/1 and frames/2 raw frames: depth 8 is packed rgba (4 bytes per pixel), depth 16 is packed rgba64le (8 bytes), depth 32 is planar gbrapf32le (16 bytes, planes G, B, R, A, 1.0 is full scale); whole frames back to back, no header, no padding, straight alpha, a frame of at most 4 GiB; a stream that ends inside a frame is a partial frame",
+  "patterns": [
+    {"spec": "constant:R,G,B,A", "meaning": "every pixel has the four levels given, each 0 to 65535 with 65535 as full scale"},
+    {"spec": "hramp", "meaning": "R, G and B ramp from level 0 at the first column to 65535 at the last, A is full"},
+    {"spec": "vramp", "meaning": "the same down the rows"},
+    {"spec": "checker:3", "meaning": "square cells of the given size, black and white, A full; the colours swap on every frame"},
+    {"spec": "random:7", "meaning": "every sample is a draw of SplitMix64 seeded from the seed and the frame index"},
+    {"spec": "aramp", "meaning": "R, G, B are the levels 49152, 32768, 16384 and A ramps along the columns"}
+  ],
+  "level_mapping": "depth 8: (level * 255 + 32767) / 65535 with integer division; depth 16: the level; depth 32: level / 65535 as a float",
+  "comparison": "tolerance 0 on bit patterns: at depth 32 negative zero differs from zero, NaNs with different payloads differ and NaNs with one bit pattern are equal; the first difference is the first in frame order, then row, column and channel R, G, B, A",
+  "report": "equal: equal frames=N width=W height=H depth=D; differ: differ frames_a=A frames_b=B compared=C equal=E different=F samples=S, then first frame=I x=X y=Y channel=R|G|B|A a=VALUE b=VALUE, or first none when only the frame counts differ; a value is decimal at depth 8 and 16 and FLOAT:BITS at depth 32 (the float in Rust debug form, the bit pattern in eight hex digits)",
+  "error_line": "error: CODE: MESSAGE, where CODE is usage, unsupported, bad_input, partial_frame or broken_pipe",
+  "exit_one": "frame-cmp exits 1 when the streams differ. The exit table of the convention gives 1 to stage_failed, which these tools never report, so 1 is free; it is the status that diff and cmp give for a difference, and a script can tell a difference (1) from a failure (2, 3, 4). frame-gen never exits 1",
+  "exit_codes_table": [
+    {"code": 0, "means": "success, or frame-cmp found the streams equal", "table": "the table's 0"},
+    {"code": 1, "means": "frame-cmp only: the streams differ (nothing failed)", "table": "a choice of the tool, see exit_one"},
+    {"code": 2, "means": "usage", "table": "the table's usage"},
+    {"code": 3, "means": "unsupported: a depth other than 8, 16 or 32, or a frame over 4 GiB", "table": "the table's unsupported"},
+    {"code": 4, "means": "bad_input: unreadable input, partial_frame, a declared frame count not met, or broken_pipe on standard output", "table": "the table's bad_input, partial_frame and broken_pipe"}
+  ],
+  "exit_codes": [
+    {"tool": "frame-gen", "code": 0, "scenario": "gen_hramp_depth8", "args": "--width 2 --height 1 --depth 8 --frames 1 --pattern hramp", "stdin": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "hex", "stdout": "000000ffffffffff"},
+    {"tool": "frame-gen", "code": 0, "scenario": "gen_zero_frames", "args": "--width 2 --height 1 --depth 8 --frames 0", "stdin": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "frame-gen", "code": 0, "scenario": "gen_help", "args": "--help", "stdin": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "prefix", "stdout": "usage: frame-gen "},
+    {"tool": "frame-gen", "code": 2, "scenario": "gen_missing_frames", "args": "--width 2 --height 1 --depth 8", "stdin": "none", "stderr_kind": "prefix", "stderr": "error: usage: ", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "frame-gen", "code": 2, "scenario": "gen_decimal_rate", "args": "--width 2 --height 1 --depth 8 --frames 1 --fps 29.97", "stdin": "none", "stderr_kind": "prefix", "stderr": "error: usage: ", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "frame-gen", "code": 3, "scenario": "gen_unsupported_depth", "args": "--width 2 --height 1 --depth 12 --frames 1", "stdin": "none", "stderr_kind": "prefix", "stderr": "error: unsupported: ", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "frame-gen", "code": 3, "scenario": "gen_frame_over_4_gib", "args": "--width 32768 --height 32769 --depth 8 --frames 1", "stdin": "none", "stderr_kind": "prefix", "stderr": "error: unsupported: ", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "frame-cmp", "code": 0, "scenario": "cmp_equal", "args": "--width 2 --height 1 --depth 8 a.raw b.raw", "stdin": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "exact", "stdout": "equal frames=2 width=2 height=1 depth=8\n"},
+    {"tool": "frame-cmp", "code": 0, "scenario": "cmp_equal_stdin", "args": "--width 2 --height 1 --depth 8 a.raw -", "stdin": "a.raw", "stderr_kind": "empty", "stderr": "", "stdout_kind": "exact", "stdout": "equal frames=2 width=2 height=1 depth=8\n"},
+    {"tool": "frame-cmp", "code": 0, "scenario": "cmp_help", "args": "--help", "stdin": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "prefix", "stdout": "usage: frame-cmp "},
+    {"tool": "frame-cmp", "code": 1, "scenario": "cmp_differ_sample", "args": "--width 2 --height 1 --depth 8 a.raw b.raw", "stdin": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "exact", "stdout": "differ frames_a=2 frames_b=2 compared=2 equal=1 different=1 samples=1\nfirst frame=1 x=1 y=0 channel=G a=255 b=21\n"},
+    {"tool": "frame-cmp", "code": 1, "scenario": "cmp_differ_length", "args": "--width 2 --height 1 --depth 8 a.raw b.raw", "stdin": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "exact", "stdout": "differ frames_a=2 frames_b=1 compared=1 equal=1 different=0 samples=0\nfirst none\n"},
+    {"tool": "frame-cmp", "code": 1, "scenario": "cmp_differ_verbose", "args": "--width 2 --height 1 --depth 8 -v a.raw b.raw", "stdin": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "exact", "stdout": "frame 0 equal\nframe 1 differ samples=1\ndiffer frames_a=2 frames_b=2 compared=2 equal=1 different=1 samples=1\nfirst frame=1 x=1 y=0 channel=G a=255 b=21\n"},
+    {"tool": "frame-cmp", "code": 2, "scenario": "cmp_one_stream", "args": "--width 2 --height 1 --depth 8 a.raw", "stdin": "none", "stderr_kind": "prefix", "stderr": "error: usage: ", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "frame-cmp", "code": 2, "scenario": "cmp_two_stdin", "args": "--width 2 --height 1 --depth 8 - -", "stdin": "none", "stderr_kind": "prefix", "stderr": "error: usage: ", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "frame-cmp", "code": 3, "scenario": "cmp_unsupported_depth", "args": "--width 2 --height 1 --depth 10 a.raw b.raw", "stdin": "none", "stderr_kind": "prefix", "stderr": "error: unsupported: ", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "frame-cmp", "code": 4, "scenario": "cmp_partial_frame", "args": "--width 2 --height 1 --depth 8 a.raw b.raw", "stdin": "none", "stderr_kind": "prefix", "stderr": "error: partial_frame: stream b: ", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "frame-cmp", "code": 4, "scenario": "cmp_missing_file", "args": "--width 2 --height 1 --depth 8 a.raw absent.raw", "stdin": "none", "stderr_kind": "prefix", "stderr": "error: bad_input: cannot read ", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "frame-cmp", "code": 4, "scenario": "cmp_count_mismatch", "args": "--width 2 --height 1 --depth 8 --frames 3 a.raw b.raw", "stdin": "none", "stderr_kind": "prefix", "stderr": "error: bad_input: stream a: ", "stdout_kind": "empty", "stdout": ""}
+  ]
+}

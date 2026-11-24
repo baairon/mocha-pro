@@ -1,0 +1,15 @@
+[package]
+name = "frame-io"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Generic raw frame streams of the handoff convention: geometry, readers and writers, synthetic patterns and an exact comparer, with the tools frame-gen and frame-cmp."
+
+[[bin]]
+name = "frame-gen"
+path = "src/bin/frame_gen.rs"
+
+[[bin]]
+name = "frame-cmp"
+path = "src/bin/frame_cmp.rs"

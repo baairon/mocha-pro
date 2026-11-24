@@ -317,7 +317,285 @@ class EmptyCallRecords(unittest.TestCase):
         sch = load_schema()
         self.assertIs(sch["additionalProperties"], False)
         optional = set(sch["properties"]) - set(sch["required"])
-        self.assertEqual(optional, {"contract", "value_classes_allowed", "pairing", "calibration"})
+        self.assertEqual(optional, {"contract", "value_classes_allowed", "pairing", "calibration", "rows_basis", "frames"})
+
+
+def mixed(read=3, obs=2, rung=None):
+    r = counted() if rung else base()
+    r["rung"] = rung
+    r["rows_basis"] = {"rows_total": read + obs, "rows_read": read, "rows_observed": obs,
+                       "observation_label": "partial observation, not a result of record"}
+    return r
+
+
+class MixedRows(unittest.TestCase):
+    def test_state_and_wording(self):
+        r = mixed()
+        self.assertEqual(status.module_tier(r), "Read and partly observed")
+        out = status.line(r)
+        self.assertIn("3 of 5 rows read, 2 observed in a partial observation, not a result of record", out)
+        self.assertNotRegex(out, r"(?i)matches the emulated|verified|rung None|%")
+
+    def test_never_parity_even_with_perfect_counts(self):
+        r = mixed(rung="K-PARITY")
+        self.assertEqual(status.module_tier(r), "Read and partly observed")
+        self.assertIsNone(status.rung_label(r)[0])
+        self.assertNotIn("matches the emulated original", status.line(r))
+        self.assertNotIn("1 of 1 modules", status.totals([r]))
+
+    def test_totals_line_apart(self):
+        out = status.totals([counted(), mixed()]).splitlines()
+        self.assertEqual(out[-1], "not a parity unit: u1 has 3 rows read and 2 rows observed in a partial observation, not a result of record")
+        self.assertEqual(len(out), 2)
+
+    def test_bad_counts_invalid(self):
+        r = mixed(); r["rows_basis"]["rows_read"] = 4
+        self.assertIn("invalid result file", status.line(r))
+        r = mixed(); r["rows_basis"]["observation_label"] = "x"
+        self.assertIn("invalid result file", status.line(r))
+        r = mixed(); r["rows_basis"]["rows_read"] = True
+        self.assertIn("invalid result file", status.line(r))
+
+    def test_sum_below_total_invalid(self):
+        r = mixed(); r["rows_basis"]["rows_total"] = 9
+        self.assertIn("invalid result file", status.line(r))
+
+    def test_total_under_one_invalid(self):
+        r = mixed(read=0, obs=0)
+        self.assertEqual(r["rows_basis"]["rows_total"], 0)
+        self.assertIn("invalid result file", status.line(r))
+
+    def test_boolean_counts_invalid(self):
+        r = mixed(read=1, obs=0)
+        r["rows_basis"]["rows_read"] = True
+        self.assertIn("invalid result file", status.line(r))
+        r = mixed(read=1, obs=0)
+        r["rows_basis"]["rows_total"] = True
+        self.assertIn("invalid result file", status.line(r))
+
+    def test_mixed_unit_never_enters_a_rung_line(self):
+        r = mixed(rung="K-PARITY")
+        out = status.totals([r])
+        self.assertNotIn("totals, rung", out)
+        self.assertEqual(len(out.splitlines()), 1)
+        self.assertTrue(out.startswith("not a parity unit: u1 has 3 rows read"))
+        self.assertEqual(status.totals([counted(), r]).count("totals, rung"), 1)
+
+    def test_schema_const_and_minimum(self):
+        p = load_schema()["properties"]["rows_basis"]["properties"]
+        self.assertEqual(p["observation_label"]["const"], status.PARTIAL_LABEL)
+        self.assertEqual(p["rows_total"]["minimum"], 1)
+
+    def test_blockers_still_win(self):
+        r = mixed(); r["blockers"] = ["G1: c | record: p sha256: " + "0" * 64]
+        self.assertEqual(status.module_tier(r), "Blocked")
+
+    def test_schema_shape(self):
+        p = load_schema()["properties"]["rows_basis"]
+        self.assertEqual(set(p["required"]), set(mixed()["rows_basis"]))
+        self.assertIs(p["additionalProperties"], False)
+
+
+def pix(kind="emulated original", n=300, per=2, depth=8, ident=None):
+    """A made up, generic pixel unit (self test of the tools, no claim about any plug-in)."""
+    r = counted(n)
+    tot = n * per
+    ident = tot if ident is None else ident
+    r["frames"] = {"reference_kind": kind, "frames_compared": tot, "frames_identical": ident,
+                   "geometries": [{"width": 64, "height": 32, "depth": depth, "frames_compared": tot, "frames_identical": ident}]}
+    if ident < tot:
+        r["cases"].update(identical=n - 1, differing=1)
+    return r
+
+
+class PixelFrames(unittest.TestCase):
+    """The optional frames block: generic tools and a pass through style self test."""
+
+    def test_absent_block_changes_nothing(self):
+        r = counted()
+        self.assertEqual(status.module_tier(r), "Verified")
+        self.assertNotIn("frames identical", status.line(r))
+
+    def test_emulated_all_identical_verifies_and_names_frames(self):
+        r = pix()
+        self.assertEqual(status.module_tier(r), "Verified")
+        self.assertIn("300 of 300 compared cases identical, 600 of 600 compared frames identical, judge", status.line(r))
+
+    def test_owner_supplied_never_verified_or_matches(self):
+        r = pix("owner supplied frames")
+        self.assertEqual(status.module_tier(r), "Owner supplied frames")
+        self.assertIsNone(status.rung_label(r)[0])
+        self.assertNotIn("matches the emulated original", status.line(r))
+
+    def test_owner_supplied_prints_fixed_label(self):
+        out = status.line(pix("owner supplied frames"))
+        self.assertIn(status.OWNER_LABEL, out)
+        self.assertIn("600 of 600 frames equal to the supplied frames", out)
+        self.assertNotRegex(out, r"(?i)\bmatch|verified|%")
+
+    def test_owner_supplied_totals_apart(self):
+        out = status.totals([counted(), pix("owner supplied frames")]).splitlines()
+        self.assertEqual(out[0], "totals, rung K-PARITY: 1 of 1 modules match the emulated original, 1 of 1 verified (judge: emulator)")
+        self.assertEqual(out[1], "not a parity unit: u1 has 600 frames compared against " + status.OWNER_LABEL)
+        self.assertEqual(len(out), 2)
+
+    def test_owner_supplied_with_perfect_everything_still_below(self):
+        r = pix("owner supplied frames"); r["rung"] = "REC-PARITY"
+        self.assertEqual(status.module_tier(r), "Owner supplied frames")
+        self.assertNotIn("0 of 1", status.totals([r]))
+        self.assertNotIn("modules match", status.totals([r]))
+
+    def test_owner_supplied_with_blocker_still_labelled(self):
+        r = pix("owner supplied frames"); r["blockers"] = ["G1: c | record: p sha256: " + "0" * 64]
+        self.assertEqual(status.module_tier(r), "Blocked")
+        self.assertIn(status.OWNER_LABEL, status.line(r))
+
+    def test_reference_kind_only_two_values(self):
+        r = pix(); r["frames"]["reference_kind"] = "reference"
+        self.assertIn("invalid result file", status.line(r))
+        r = pix(); del r["frames"]["reference_kind"]
+        self.assertIn("invalid result file", status.line(r))
+        enum = load_schema()["properties"]["frames"]["properties"]["reference_kind"]["enum"]
+        self.assertEqual(enum, ["emulated original", "owner supplied frames"])
+
+    def test_identical_above_compared_invalid(self):
+        r = pix(); r["frames"]["frames_identical"] = 601
+        self.assertIn("frames_identical > frames_compared", status.line(r))
+
+    def test_entry_identical_above_compared_invalid(self):
+        r = pix(); r["frames"]["geometries"][0]["frames_identical"] = 601
+        self.assertIn("identical > compared", status.line(r))
+
+    def test_sum_over_geometries_must_equal(self):
+        r = pix(); r["frames"]["frames_compared"] = 700
+        self.assertIn("differ from the sum", status.line(r))
+        r = pix(); r["frames"]["geometries"].append(
+            {"width": 8, "height": 8, "depth": 16, "frames_compared": 3, "frames_identical": 3})
+        self.assertIn("differ from the sum", status.line(r))
+
+    def test_two_geometries_sum_and_verify(self):
+        r = pix()
+        r["frames"]["geometries"][0].update(frames_compared=503, frames_identical=503)
+        r["frames"]["geometries"].append({"width": 8, "height": 8, "depth": 32, "frames_compared": 97, "frames_identical": 97})
+        self.assertEqual(status.invariants(r), [])
+        self.assertEqual(status.module_tier(r), "Verified")
+
+    def test_repeated_geometry_invalid(self):
+        r = pix(); r["frames"]["geometries"] = r["frames"]["geometries"] * 2
+        self.assertTrue(status.invariants(r))
+
+    def test_bad_geometry_entries_invalid(self):
+        for k, v in (("depth", 12), ("width", 0), ("height", 1.5), ("frames_compared", -1), ("depth", True)):
+            r = pix(); r["frames"]["geometries"][0][k] = v
+            self.assertTrue(status.invariants(r), (k, v))
+
+    def test_counts_must_be_integers(self):
+        r = pix(); r["frames"]["frames_compared"] = True
+        self.assertTrue(status.invariants(r))
+        r = pix(); r["frames"]["frames_identical"] = "5"
+        self.assertTrue(status.invariants(r))
+
+    def test_frames_without_geometry_invalid(self):
+        r = pix(); r["frames"]["geometries"] = []
+        self.assertTrue(status.invariants(r))
+
+    def test_cases_cannot_exceed_frames(self):
+        r = pix(per=1); r["frames"]["frames_compared"] = r["frames"]["frames_identical"] = 299
+        r["frames"]["geometries"][0].update(frames_compared=299, frames_identical=299)
+        self.assertIn("cases compared > frames compared", status.line(r))
+
+    def test_differing_frames_need_a_differing_case(self):
+        r = pix(ident=599); r["cases"].update(identical=300, differing=0)
+        self.assertIn("frames differ but no case differs", status.line(r))
+
+    def test_differing_case_with_identical_frames_invalid(self):
+        r = pix(); r["cases"].update(identical=299, differing=1)
+        self.assertIn("a case differs but all frames are identical", status.line(r))
+
+    def test_differing_frames_below_matches(self):
+        r = pix(ident=599)
+        self.assertEqual(status.module_tier(r), "In progress")
+        self.assertIsNone(status.rung_label(r)[0])
+
+    def test_zero_frames_not_matches(self):
+        r = pix(); r["frames"].update(frames_compared=0, frames_identical=0)
+        r["frames"]["geometries"][0].update(frames_compared=0, frames_identical=0)
+        r["cases"].update(in_contract=0, compared=0, identical=0)
+        self.assertNotIn(status.module_tier(r), ("Matches", "Verified"))
+
+    def test_depth_rules_per_depth(self):
+        cmp_ = {"tolerance_ulp": 0, "nan_rule": "class", "signed_zero": "bits"}
+        for d in (8, 16):
+            t = status.depth_rule(d, cmp_)
+            self.assertIn("NaN and signed zero rules do not apply", t)
+            self.assertIn("integer samples", t)
+        t = status.depth_rule(32, cmp_)
+        self.assertIn("NaN rule class", t); self.assertIn("signed zero bits", t)
+        with self.assertRaises(ValueError):
+            status.depth_rule(10, cmp_)
+
+    def test_integer_depth_needs_whole_tolerance(self):
+        r = pix(depth=8); r["comparator"]["tolerance_ulp"] = 0.5
+        self.assertIn("whole number tolerance", status.line(r))
+        r = pix(depth=32); r["comparator"]["tolerance_ulp"] = 0.5
+        self.assertEqual(status.invariants(r), [])
+
+    def test_frame_above_4_gib_invalid(self):
+        r = pix(depth=32); r["frames"]["geometries"][0].update(width=16384, height=16385)  # 16 B per pixel, just above 2**32
+        self.assertIn("above 4 GiB", " ".join(status.invariants(r)))
+        r = pix(depth=32); r["frames"]["geometries"][0].update(width=16384, height=16384)  # exactly 4 GiB
+        self.assertEqual(status.invariants(r), [])
+        r = pix(depth=8); r["frames"]["geometries"][0].update(width=16384, height=16385)  # 4 B per pixel, fine
+        self.assertEqual(status.invariants(r), [])
+
+    def test_mixed_depths_need_whole_tolerance(self):
+        r = pix(depth=8); r["comparator"]["tolerance_ulp"] = 0.5
+        r["frames"]["geometries"][0].update(frames_compared=300, frames_identical=300)
+        r["frames"]["geometries"].append({"width": 4, "height": 4, "depth": 32, "frames_compared": 300, "frames_identical": 300})
+        self.assertIn("whole number tolerance", " ".join(status.invariants(r)))
+
+    def test_negative_tolerance_invalid_with_frames(self):
+        r = pix(depth=8); r["comparator"]["tolerance_ulp"] = -1
+        self.assertIn("whole number tolerance", " ".join(status.invariants(r)))
+
+    def test_owner_label_text_is_fixed(self):
+        self.assertEqual(status.OWNER_LABEL, "owner supplied frames, not the original, not a parity result")
+
+    def test_identical_sum_must_equal(self):
+        r = pix(); r["frames"]["geometries"][0]["frames_identical"] = 599
+        self.assertIn("differ from the sum", " ".join(status.invariants(r)))
+
+    def test_rows_basis_wins_over_owner_supplied(self):
+        r = pix("owner supplied frames"); r["rows_basis"] = mixed()["rows_basis"]
+        self.assertEqual(status.module_tier(r), "Read and partly observed")
+
+    def test_nonzero_tolerance_still_no_label_with_frames(self):
+        r = pix(depth=16); r["comparator"]["tolerance_ulp"] = 1
+        self.assertIsNone(status.rung_label(r)[0])
+
+    def test_schema_block_is_closed_and_complete(self):
+        p = load_schema()["properties"]["frames"]
+        self.assertIs(p["additionalProperties"], False)
+        self.assertEqual(set(p["required"]), set(pix()["frames"]))
+        g = p["properties"]["geometries"]["items"]
+        self.assertIs(g["additionalProperties"], False)
+        self.assertEqual(set(g["required"]), set(pix()["frames"]["geometries"][0]))
+        self.assertEqual(g["properties"]["depth"]["enum"], [8, 16, 32])
+        self.assertNotIn("frames", load_schema()["required"])
+
+    def test_forbidden_words_with_frames(self):
+        out = status.report([pix(), pix("owner supplied frames"), pix(ident=5)])
+        for pat in FORBIDDEN:
+            self.assertIsNone(re.search(pat, out, re.I), pat)
+
+    def test_cli_prints_owner_label(self):
+        with scratch_dir() as d:
+            p = os.path.join(d, "u.json")
+            with open(p, "w") as h:
+                json.dump(pix("owner supplied frames"), h)
+            q = subprocess.run([sys.executable, "-I", status.__file__, p], capture_output=True, text=True)
+        self.assertEqual(q.returncode, 0)
+        self.assertIn(status.OWNER_LABEL, q.stdout)
 
 
 class Messages(unittest.TestCase):

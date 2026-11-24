@@ -1,0 +1,11 @@
+[package]
+name = "stage-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "A generic frame stage program for the handoff convention: a stage manifest and a pass through self test stage that copies raw frames unchanged."
+
+[[bin]]
+name = "mocha-stage"
+path = "src/main.rs"

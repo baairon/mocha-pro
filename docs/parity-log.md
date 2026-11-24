@@ -42,7 +42,7 @@ When this entry was written the original had not been booted, no result file exi
 
 ## 2026-11-17: the first runs
 
-**The original in the emulator.** The original plug-in was started in the emulator, unmodified, under the fault rule, by which a call the harness has no answer for stops the run and names itself. The runs were for the first step of the method, the interface pairing and the calibration ([parity: the interface pairing and calibration](parity.md#the-interface-pairing-and-calibration)). The code that computes the original's output was not read or traced.
+**The original in the emulator.** The original plug-in was started in the emulator, unmodified, under the fault rule, by which a call the harness has no answer for stops the run and names itself. The runs were for the first step of the method, the interface pairing and the calibration ([parity: the interface pairing and calibration](parity.md#the-interface-pairing-and-calibration)). When this entry was written, the code that computes the original's output had not been read or traced; the [static reading](#2026-11-24-the-static-reading) came later.
 
 **Optional Windows components.** Where Windows would provide an optional component that the Microsoft C runtime probes for and that the harness does not model, the harness answers with a declared "not found". The README's list of stand-ins already states this for host services on the declared list of absent ones, and a request with no declared answer still stops the run ([README: assumptions and stand-ins](../README.md#assumptions-and-stand-ins)).
 
@@ -147,3 +147,34 @@ On Linux, with Rust 1.94.0, the stable Rust 1.100.0 for the formatting and lint 
 | `python -I tools/test_check_docs.py` | 32 tests, OK, 1 skipped: the test that reads a term list skips when none is named |
 | `python -I tools/gen_docs.py --check` | 8 outputs, 0 drifted, 0 unknown keys |
 | `python -I tools/check_docs.py` | 7 pages, 0 findings, 2 checks not run (no term list named) |
+
+## Test runs, 2026-11-24, with the frame and stage crates
+
+On Linux, with Rust 1.94.0 and Python 3.12.3, after `crates/frame-io` and `crates/stage-cli` were added, the table format of `crates/effect-params` gained its version 2, the result file schema gained the `rows_basis` and `frames` blocks, and `contracts/` was taken byte for byte from twixtor at commit 8087d06. Against the [runs with the hexadecimal digit check](#test-runs-2026-11-18-with-the-hexadecimal-digit-check), the crate tests grow by the two new crates and by three test files of `effect-params`, the status tests grow from 52 to 96, the documentation has one more generated output and one more page, and the convention's conformance tool runs for the first time, from a twixtor checkout. The new crates had not run on macOS or Windows by then; the CI workflow is where they first meet those two systems. None of these runs compares anything with the original: the one stage copies frames, and its frames are synthetic.
+
+| Suite | Result |
+|---|---|
+| `cargo test --locked --no-fail-fast` | 385 pass (147 in `effect-params`, 87 in `frame-io`, 44 in `mask-seq`, 26 in `shape-canon`, 81 in `stage-cli`), 0 fail, 0 ignored |
+| `cargo fmt --all -- --check` | no change needed |
+| `cargo clippy --locked --all-targets -- -D warnings` | no warning |
+| `python -m compileall -q tools` | no error |
+| `python -I tools/test_status.py` | 96 tests, OK |
+| `python -I tools/test_gen_docs.py` | 13 tests, OK |
+| `python -I tools/test_check_docs.py` | 32 tests, OK, 1 skipped: the test that reads a term list skips when none is named |
+| `python -I tools/gen_docs.py --check` | 9 outputs, 0 drifted, 0 unknown keys |
+| `python -I tools/check_docs.py` | 8 pages, 0 findings, 2 checks not run (no term list named) |
+| `python -I tools/conformance.py --stage "<path to>/mocha-stage apply selftest-copy" --full`, run inside a twixtor checkout at commit 8087d06 | level 1: 270 passed; level 3: 33 passed; exit 0 |
+
+## 2026-11-24: the static reading
+
+**What was read.** From 2026-11-23 parts of the original's code were read statically, with disassembly tools and without running it: in the plug-in, the handling of its parameter setup, its render commands and its arbitrary data; in the engine module, the entry path, the reader of the project data held in the plug-in's parameters, and stages of the render path with their arithmetic.
+
+**What was written.** Each read was written up as a specification of method, interfaces and formats: the host interactions in their order, what a stage of a render computes with the formulas, number types and rounding it uses, or the form of the project data. A specification holds no code excerpt and no instruction listing. The specifications are kept outside the repository, like the predicted tables, and code here that rests on one is written from it and from what the emulator shows.
+
+**What was not read.** The code of the original's licence, activation and machine identity checks is never read. Where a read path reaches such a check, only the call and what its caller does with the answer were recorded ([README: left out](../README.md#left-out)). When this entry was written, the arithmetic of the modules that the original gates behind its licence state and the code of the product's other files had not been read.
+
+**What it changes.** A specification is not a measurement. A row that is only read from one is not compared, and a unit that rests on such rows carries the label set for them ([parity: the status rule](parity.md#the-status-rule)). When this entry was written, the original had run in the emulator only for the interface pairing and the calibration, and no case had been compared.
+
+## 2026-11-24: the licence boundary
+
+**The licence boundary.** The licence module's library requests are answered from the emulated machine, its plain folder and environment questions get the emulator's declared answers, its other unanswerable calls get the documented Windows not found or not available failure, machine identity questions from it get their documented failure, and its start-up routine is not run during the engine load ([README: left out](../README.md#left-out)). No answer gives a licensed state. This supersedes the line of [2026-11-17](#2026-11-17-the-judge) that such calls are never answered.
