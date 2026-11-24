@@ -13,10 +13,13 @@ pub enum ParamKind {
     Angle,
     Color,
     Group,
+    GroupEnd,
+    Arbitrary,
+    NoData,
 }
 
 impl ParamKind {
-    pub const ALL: [ParamKind; 10] = [
+    pub const ALL: [ParamKind; 13] = [
         ParamKind::Float,
         ParamKind::Int,
         ParamKind::Checkbox,
@@ -27,6 +30,9 @@ impl ParamKind {
         ParamKind::Angle,
         ParamKind::Color,
         ParamKind::Group,
+        ParamKind::GroupEnd,
+        ParamKind::Arbitrary,
+        ParamKind::NoData,
     ];
 
     pub fn as_str(self) -> &'static str {
@@ -41,6 +47,9 @@ impl ParamKind {
             ParamKind::Angle => "angle",
             ParamKind::Color => "color",
             ParamKind::Group => "group",
+            ParamKind::GroupEnd => "group_end",
+            ParamKind::Arbitrary => "arbitrary",
+            ParamKind::NoData => "nodata",
         }
     }
 

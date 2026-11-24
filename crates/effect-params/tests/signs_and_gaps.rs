@@ -14,14 +14,9 @@ fn err(text: &str) -> (usize, String) {
 }
 
 fn with(name: &str, d: Cell) -> ParamDef {
-    ParamDef {
-        name: name.into(),
-        kind: ParamKind::Float,
-        default: d,
-        min: Cell::Unknown,
-        max: Cell::Unknown,
-        flags: None,
-    }
+    let mut p = ParamDef::new(name, ParamKind::Float);
+    p.default = d;
+    p
 }
 
 fn plain(names: &[&str]) -> Table {
@@ -242,7 +237,9 @@ fn upper_case_digits_stay_accepted() {
     .unwrap();
     assert!(t.params[0].default.bits_eq(&Cell::Float(1.0)));
     assert_eq!(t.params[0].flags, Some(ParamFlags(0xabc)));
-    assert!(t.serialize().contains("b:3ff0000000000000\t?\t?\t0xabc\n"));
+    assert!(t
+        .serialize()
+        .contains("b:3ff0000000000000\t?\t?\t0xabc\t?\t?\t?\n"));
 }
 
 #[test]

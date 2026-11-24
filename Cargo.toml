@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/effect-params", "crates/shape-model", "crates/shape-canon", "crates/mask-seq"]
+members = ["crates/effect-params", "crates/shape-model", "crates/shape-canon", "crates/mask-seq", "crates/frame-io", "crates/stage-cli"]
 
 [workspace.package]
 version = "0.1.0"

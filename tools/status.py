@@ -9,6 +9,13 @@ no bare "bit exact", no percentages and no merged counts.
 import json, os, sys
 from datetime import datetime, timezone
 
+PARTIAL_LABEL = "partial observation, not a result of record"
+OWNER_LABEL = "owner supplied frames, not the original, not a parity result"
+REF_EMULATED = "emulated original"
+REF_OWNER = "owner supplied frames"
+DEPTHS = (8, 16, 32)
+BYTES_PER_PIXEL = {8: 4, 16: 8, 32: 16}  # rgba, rgba64le, gbrapf32le (docs/handoff.md frame contract)
+FRAME_MAX_BYTES = 4 * 1024 ** 3  # a frame is at most 4 GiB
 CASE_FLOOR = 150  # the fewest compared cases a module may have and still match
 
 
@@ -33,10 +40,98 @@ def survivor_rule(r):
     return all(survivor_ok(s) for s in m.get("survivors", []))
 
 
+def _int(x, lo=0):
+    return isinstance(x, int) and not isinstance(x, bool) and x >= lo
+
+
+def depth_rule(depth, comparator):
+    """How the comparator applies at one frame depth (docs/parity.md). Depth 8 and 16 samples are unsigned
+    integers: tolerance_ulp counts integer code steps (a whole number), and the NaN and signed zero rules
+    do not apply because those samples cannot hold either. Depth 32 samples are floats: tolerance_ulp counts
+    float ulps and the comparator's nan_rule and signed_zero apply as written. Returns a one line text."""
+    if depth in (8, 16):
+        return "depth %d: integer samples, tolerance %s code steps, NaN and signed zero rules do not apply" % (
+            depth, _g(comparator, "tolerance_ulp"))
+    if depth == 32:
+        return "depth 32: float samples, tolerance %s ulp, NaN rule %s, signed zero %s" % (
+            _g(comparator, "tolerance_ulp"), _g(comparator, "nan_rule", default="?"), _g(comparator, "signed_zero", default="?"))
+    raise ValueError("depth %r is not 8, 16 or 32" % (depth,))
+
+
+def frames_problems(r):
+    """Problems of the optional frames block (empty list when absent or valid)."""
+    f = r.get("frames")
+    if f is None:
+        return []
+    if not isinstance(f, dict):
+        return ["frames is not an object"]
+    bad = []
+    if f.get("reference_kind") not in (REF_EMULATED, REF_OWNER):
+        bad.append("frames.reference_kind is not one of the two allowed values")
+    g = f.get("geometries")
+    tot_c = tot_i = 0
+    if not isinstance(g, list):
+        bad.append("frames.geometries is not a list")
+    else:
+        for e in g:
+            ok = (isinstance(e, dict) and _int(e.get("width"), 1) and _int(e.get("height"), 1)
+                  and e.get("depth") in DEPTHS and not isinstance(e.get("depth"), bool)
+                  and _int(e.get("frames_compared")) and _int(e.get("frames_identical")))
+            if not ok:
+                bad.append("a frames geometry entry is malformed")
+                continue
+            if e["frames_identical"] > e["frames_compared"]:
+                bad.append("a frames geometry entry has identical > compared")
+            if e["width"] * e["height"] * BYTES_PER_PIXEL[e["depth"]] > FRAME_MAX_BYTES:
+                bad.append("a frames geometry entry is above 4 GiB per frame")
+            tot_c += e["frames_compared"]
+            tot_i += e["frames_identical"]
+        keys = [(e.get("width"), e.get("height"), e.get("depth")) for e in g if isinstance(e, dict)]
+        if len(set(map(repr, keys))) != len(keys):
+            bad.append("frames geometry listed twice")
+    fc, fi = f.get("frames_compared"), f.get("frames_identical")
+    if not (_int(fc) and _int(fi)):
+        bad.append("frames counts are not non-negative integers")
+        return bad
+    if fi > fc:
+        bad.append("frames_identical > frames_compared")
+    if isinstance(g, list) and (fc != tot_c or fi != tot_i):
+        bad.append("frames counts differ from the sum over the geometries")
+    if isinstance(g, list) and fc > 0 and not g:
+        bad.append("frames compared with no geometry listed")
+    c = r.get("cases", {})
+    if _int(c.get("compared")) and c["compared"] > fc:
+        bad.append("cases compared > frames compared")
+    if fi < fc and c.get("differing") == 0:
+        bad.append("frames differ but no case differs")
+    if fi == fc and c.get("differing", 0) > 0:
+        bad.append("a case differs but all frames are identical")
+    tol = _g(r, "comparator", "tolerance_ulp")
+    ds = [e.get("depth") for e in g if isinstance(e, dict)] if isinstance(g, list) else []
+    if ds and any(d in (8, 16) for d in ds) and not (isinstance(tol, (int, float)) and not isinstance(tol, bool) and float(tol).is_integer() and tol >= 0):
+        bad.append("integer depths need a whole number tolerance")
+    return bad
+
+
+def owner_supplied(r):
+    return isinstance(r.get("frames"), dict) and r["frames"].get("reference_kind") == REF_OWNER
+
+
 def invariants(r):
     """Problems that make a result file invalid. An empty list means the file is valid."""
     c = r["cases"]
     bad = []
+    rb = r.get("rows_basis")
+    if rb is not None:
+        ints = isinstance(rb, dict) and all(isinstance(rb.get(k), int) and not isinstance(rb.get(k), bool) and rb.get(k) >= 0
+                                            for k in ("rows_total", "rows_read", "rows_observed"))
+        if not ints:
+            bad.append("rows_basis counts are not non-negative integers")
+        elif rb["rows_total"] < 1 or rb["rows_read"] + rb["rows_observed"] != rb["rows_total"]:
+            bad.append("rows_read + rows_observed != rows_total")
+        if isinstance(rb, dict) and rb.get("observation_label") != PARTIAL_LABEL:
+            bad.append("rows_basis observation_label missing")
+    bad += frames_problems(r)
     if c["identical"] + c["differing"] != c["compared"]:
         bad.append("identical + differing != compared")
     if c["compared"] > c["in_contract"]:
@@ -83,10 +178,20 @@ def k_floor_misses(r):
 def rung_label(r):
     """Returns (label or None, note)."""
     c = r["cases"]
+    if r.get("rows_basis") is not None:
+        return None, "rows partly read and partly observed, never parity"
+    if owner_supplied(r):
+        return None, "owner supplied frames, never parity"
     if _g(r, "comparator", "tolerance_ulp") != 0:
         return None, "tolerance not 0"
     if c["compared"] == 0:
         return None, "0 cases compared"
+    f = r.get("frames")
+    if f is not None:
+        if _g(f, "frames_compared") == 0:
+            return None, "0 frames compared"
+        if _g(f, "frames_identical") != _g(f, "frames_compared"):
+            return None, "differing frames"
     rung = r.get("rung")
     cr = r["call_records"]
     if rung == "REC-PARITY":
@@ -107,11 +212,17 @@ def module_tier(r):
         return None
     if r.get("blockers"):
         return "Blocked"
+    if r.get("rows_basis") is not None:
+        return "Read and partly observed"  # never a parity tier, whatever the rung and the counts
+    if owner_supplied(r):
+        return "Owner supplied frames"  # never Matches or Verified, whatever the counts
     c, v, cr = r["cases"], r["values"], r["call_records"]
+    f = r.get("frames")
     clean = (c["compared"] >= CASE_FLOOR and c["compared"] == c["in_contract"] and r["comparator"]["tolerance_ulp"] == 0
              and c["differing"] == 0 and v["differing"] == 0
              and cr["compared"] >= 1 and cr["matching"] == cr["compared"]  # a check with nothing in it is unmet
-             and r.get("rung") is not None)  # a file with no rung is not a parity unit
+             and r.get("rung") is not None  # a file with no rung is not a parity unit
+             and (f is None or (f["frames_compared"] >= 1 and f["frames_identical"] == f["frames_compared"])))
     if clean and survivor_rule(r):  # clean already needs compared == in_contract
         return "Verified"
     if clean:
@@ -153,8 +264,16 @@ def line(r, rerun=None):
     if note:
         out += " (%s)" % note
     if tier in ("Verified", "Matches"):
-        out += " | matches the emulated original (rung %s, %d of %d compared cases identical, judge %s)" % (
-            r.get("rung"), c["identical"], c["compared"], j)
+        fr = r.get("frames")
+        fs = ", %d of %d compared frames identical" % (fr["frames_identical"], fr["frames_compared"]) if fr else ""
+        out += " | matches the emulated original (rung %s, %d of %d compared cases identical%s, judge %s)" % (
+            r.get("rung"), c["identical"], c["compared"], fs, j)
+    if owner_supplied(r):
+        fr = r["frames"]
+        out += " | %s: %d of %d frames equal to the supplied frames" % (OWNER_LABEL, fr["frames_identical"], fr["frames_compared"])
+    if tier == "Read and partly observed":
+        rb = r["rows_basis"]
+        out += " | %d of %d rows read, %d observed in a %s" % (rb["rows_read"], rb["rows_total"], rb["rows_observed"], PARTIAL_LABEL)
     if tier == "Blocked":
         out += " | blockers: " + "; ".join(r["blockers"])
     st = rerun_state(r, rerun)
@@ -168,8 +287,10 @@ def totals(results):
     No result file: a none line."""
     if not results:
         return "totals: none (0 cases compared)"
-    units = [r for r in results if r.get("rung") is not None]
-    apart = [r for r in results if r.get("rung") is None]
+    owner = [r for r in results if owner_supplied(r) and not frames_problems(r) and r.get("rows_basis") is None]
+    mixed = [r for r in results if r.get("rows_basis") is not None]
+    units = [r for r in results if r.get("rung") is not None and r.get("rows_basis") is None and r not in owner]
+    apart = [r for r in results if r.get("rung") is None and r.get("rows_basis") is None and r not in owner]
     rungs = []
     for r in units:
         if r["rung"] not in rungs:
@@ -184,6 +305,13 @@ def totals(results):
     for r in apart:
         out.append("not a parity unit: %s carries pairing and calibration only, has no rung and %d cases compared" % (
             r["unit"], _g(r, "cases", "compared")))
+    for r in mixed:
+        rb = r["rows_basis"]
+        out.append("not a parity unit: %s has %d rows read and %d rows observed in a %s" % (
+            r["unit"], _g(rb, "rows_read"), _g(rb, "rows_observed"), PARTIAL_LABEL))
+    for r in owner:
+        out.append("not a parity unit: %s has %d frames compared against %s" % (
+            r["unit"], r["frames"]["frames_compared"], OWNER_LABEL))
     return "\n".join(out)
 
 

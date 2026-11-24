@@ -7,6 +7,10 @@ name = "effect-params"
 version = "0.1.0"
 
 [[package]]
+name = "frame-io"
+version = "0.1.0"
+
+[[package]]
 name = "mask-seq"
 version = "0.1.0"
 
@@ -19,4 +23,8 @@ dependencies = [
 
 [[package]]
 name = "shape-model"
+version = "0.1.0"
+
+[[package]]
+name = "stage-cli"
 version = "0.1.0"

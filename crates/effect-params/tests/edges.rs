@@ -18,6 +18,10 @@ fn with(name: &str, d: Cell, lo: Cell, hi: Cell, f: Option<u32>) -> ParamDef {
         min: lo,
         max: hi,
         flags: f.map(ParamFlags),
+        extra: Extra::Unknown,
+        id: None,
+        host_flags: None,
+        host_ui_flags: None,
     }
 }
 
@@ -36,16 +40,25 @@ fn row(cells: [&str; 6]) -> String {
 
 #[test]
 fn error_text_and_line_numbers_are_exact() {
-    assert_eq!(err(""), (0, "missing \"table v1\"".to_string()));
-    assert_eq!(err("# only\n\n"), (0, "missing \"table v1\"".to_string()));
-    assert_eq!(err("nope\n"), (1, "expected \"table v1\"".to_string()));
+    assert_eq!(
+        err(""),
+        (1, "missing \"table v1\" or \"table v2\"".to_string())
+    );
+    assert_eq!(
+        err("# only\n\n"),
+        (3, "missing \"table v1\" or \"table v2\"".to_string())
+    );
+    assert_eq!(
+        err("nope\n"),
+        (1, "expected \"table v1\" or \"table v2\"".to_string())
+    );
     assert_eq!(
         err("table v1\nA\tint\t?\t?\t?\n"),
         (2, "expected 6 cells, found 5".to_string())
     );
     assert_eq!(
-        err("table v1\nA\tint\t?\t?\t?\t?\t?\n"),
-        (2, "expected 6 cells, found 7".to_string())
+        err("table v1\nA\tint\t?\t?\t?\t?\t?\t?\n"),
+        (2, "expected 6 cells, found 8".to_string())
     );
     assert_eq!(
         err("table v1\n\tint\t?\t?\t?\t?\n"),
@@ -138,7 +151,7 @@ fn line_classes_comment_blank_and_magic() {
     // An empty table is valid and serializes to the magic line alone.
     let t = Table::parse("table v1\n").unwrap();
     assert!(t.params.is_empty());
-    assert_eq!(t.serialize(), "table v1\n");
+    assert_eq!(t.serialize(), "table v2\n");
 }
 
 #[test]
@@ -160,10 +173,10 @@ fn serialized_text_is_exact() {
         ),
         bare("Param C", ParamKind::Popup),
     ]);
-    let want = "table v1\n\
-        Param A\tfloat\tb:0000000000000000\tb:3ff0000000000000\tb:fff0000000000000\t0xabc\n\
-        Param B\tfloat\ti:-3\ti:4\t?\t0x0\n\
-        Param C\tpopup\t?\t?\t?\t?\n";
+    let want = "table v2\n\
+        ?\tParam A\tfloat\tb:0000000000000000\tb:3ff0000000000000\tb:fff0000000000000\t0xabc\t?\t?\t?\n\
+        ?\tParam B\tfloat\ti:-3\ti:4\t?\t0x0\t?\t?\t?\n\
+        ?\tParam C\tpopup\t?\t?\t?\t?\t?\t?\t?\n";
     assert_eq!(t.serialize(), want);
     let back = Table::parse(want).unwrap();
     assert!(back.params[0].min.bits_eq(&Cell::Float(1.0)));
@@ -414,8 +427,19 @@ fn kind_list_and_names_are_fixed() {
     assert_eq!(
         names,
         [
-            "float", "int", "checkbox", "popup", "button", "layer", "point", "angle", "color",
-            "group"
+            "float",
+            "int",
+            "checkbox",
+            "popup",
+            "button",
+            "layer",
+            "point",
+            "angle",
+            "color",
+            "group",
+            "group_end",
+            "arbitrary",
+            "nodata"
         ]
     );
     assert_eq!(ParamKind::parse("checkbox"), Some(ParamKind::Checkbox));
@@ -439,7 +463,7 @@ fn every_kind_survives_a_table_round_trip() {
         assert_eq!(a.kind, b.kind);
         assert_eq!(a.name, b.name);
     }
-    assert_eq!(back.params.len(), 10);
+    assert_eq!(back.params.len(), 13);
 }
 
 #[test]
@@ -512,7 +536,7 @@ fn names_and_kinds_are_taken_as_written() {
     assert_eq!(t.params[0].name, " Param A ");
     let t = Table::parse(&row(["  ", "int", "?", "?", "?", "?"])).unwrap();
     assert_eq!(t.params[0].name, "  ");
-    assert_eq!(t.serialize(), "table v1\n  \tint\t?\t?\t?\t?\n");
+    assert_eq!(t.serialize(), "table v2\n?\t  \tint\t?\t?\t?\t?\t?\t?\t?\n");
     assert_eq!(
         err(&row(["A", " int", "?", "?", "?", "?"])).1,
         "unknown kind \" int\""
@@ -528,7 +552,10 @@ fn parse_error_display_is_line_and_message() {
     let e = Table::parse("table v1\n\tint\t?\t?\t?\t?\n").unwrap_err();
     assert_eq!(e.to_string(), "line 2: empty name");
     let e = Table::parse("").unwrap_err();
-    assert_eq!(e.to_string(), "line 0: missing \"table v1\"");
+    assert_eq!(
+        e.to_string(),
+        "line 1: missing \"table v1\" or \"table v2\""
+    );
 }
 
 #[test]
@@ -610,7 +637,7 @@ fn flag_bits_keep_all_thirty_two_bits() {
     )]);
     assert_eq!(
         t.serialize(),
-        "table v1\nParam A\tfloat\t?\t?\t?\t0x12345678\n"
+        "table v2\n?\tParam A\tfloat\t?\t?\t?\t0x12345678\t?\t?\t?\n"
     );
     let back = Table::parse(&t.serialize()).unwrap();
     assert_eq!(back.params[0].flags, Some(ParamFlags(0x1234_5678)));
@@ -675,7 +702,7 @@ fn nan_payload_round_trip() {
     )]);
     assert_eq!(
         t.serialize(),
-        "table v1\nParam A\tfloat\tb:7ff8000000000123\tb:7ff0000000000001\tb:fff8000000000001\t?\n"
+        "table v2\n?\tParam A\tfloat\tb:7ff8000000000123\tb:7ff0000000000001\tb:fff8000000000001\t?\t?\t?\t?\n"
     );
     let back = Table::parse(&t.serialize()).unwrap();
     assert!(back.params[0].default.bits_eq(&Cell::Float(odd)));

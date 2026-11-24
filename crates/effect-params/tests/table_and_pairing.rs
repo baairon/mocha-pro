@@ -8,6 +8,10 @@ fn def(name: &str, kind: ParamKind, d: Cell, lo: Cell, hi: Cell, f: Option<u32>)
         min: lo,
         max: hi,
         flags: f.map(ParamFlags),
+        extra: Extra::Unknown,
+        id: None,
+        host_flags: None,
+        host_ui_flags: None,
     }
 }
 
@@ -63,7 +67,7 @@ fn parse_accepts_decimal_and_comments() {
 
 #[test]
 fn parse_rejects_bad_input() {
-    assert_eq!(Table::parse("").unwrap_err().line, 0);
+    assert_eq!(Table::parse("").unwrap_err().line, 1);
     assert_eq!(Table::parse("wrong\n").unwrap_err().line, 1);
     assert!(Table::parse("table v1\nA\tfloat\t?\t?\n").is_err());
     assert!(Table::parse("table v1\nA\tnope\t?\t?\t?\t?\n").is_err());
@@ -386,7 +390,7 @@ fn flag_high_bits_are_compared() {
 #[test]
 fn parse_rejects_too_many_cells() {
     assert!(Table::parse("table v1\nA\tint\t?\t?\t?\t?\n").is_ok());
-    assert!(Table::parse("table v1\nA\tint\t?\t?\t?\t?\t?\n").is_err());
+    assert!(Table::parse("table v1\nA\tint\t?\t?\t?\t?\t?\t?\t?\n").is_err());
     assert!(Table::parse("table v1\nA\tint\t?\t?\t?\t?\t?\t?\n").is_err());
 }
 
