@@ -104,7 +104,7 @@ python -I tools/gen_docs.py --check
 python -I tools/check_docs.py
 ```
 
-Where only `python3` is installed, use `python3` for `python`. The counts in the right column are those of the [test runs](../parity-log.md#test-runs-2026-11-24-with-five-more-generic-crates); a change that adds a test or a page changes them.
+Where only `python3` is installed, use `python3` for `python`. The counts in the right column belong to the tree as it stands; a change that adds a test or a page changes them with it. None of these commands compares anything with the original.
 
 | Command | Expected result |
 |---|---|
@@ -115,19 +115,21 @@ Where only `python3` is installed, use `python3` for `python`. The counts in the
 | `python -I tools/test_status.py` | exit 0; `Ran 96 tests`, then `OK` |
 | `python -I tools/test_gen_docs.py` | exit 0; `Ran 13 tests`, then `OK` |
 | `python -I tools/test_check_docs.py` | exit 0; `Ran 32 tests`, then `OK (skipped=1)` while no term list is named |
-| `python -I tools/gen_docs.py --check` | exit 0; the line `gen_docs --check: 9 outputs, 0 drifted, 0 unknown keys` |
-| `python -I tools/check_docs.py` | exit 0; a NOT RUN line for each of the two term list checks, and the last line `check_docs: 8 pages, 0 findings, 2 checks not run` |
+| `python -I tools/gen_docs.py --check` | exit 0; the line `gen_docs --check: 8 outputs, 0 drifted, 0 unknown keys` |
+| `python -I tools/check_docs.py` | exit 0; a NOT RUN line for each of the two term list checks, and the last line `check_docs: 7 pages, 0 findings, 2 checks not run` |
 | `python -I tools/conformance.py --stage "<path to>/mocha-stage apply selftest-copy" --full`, run inside a twixtor checkout at commit 8087d06 after `cargo build --locked -p stage-cli` in this repository | exit 0; `L1 stage matrix` with 270 passed, `L3 failure injection` with 33 passed, and the last line `result: pass (exit 0): 2 passed, 0 failed, 0 not run` |
 
 ## What lives outside the repository
 
 The original plug-in files, the Windows system libraries, the After Effects SDK and every layout made from it, the emulator harness with its register of host answers, the call records, the reference outputs, the predicted parameter tables, the specifications written from static reads of the original's code ([README: legal](../../README.md#legal)), and the cases of the shape data check with their predicted dumps ([reproduce: inputs you supply](../reproduce.md#what-needs-inputs-you-supply)). Nothing in the repository needs them to build or to pass its checks.
 
+The tests of `effect-params` are also probed with deliberately broken copies of the crate, one planted error per copy, to see whether a test notices, as the tests of [the shape crates](shape-crates.md#what-lives-outside-the-repository) are. Those runs and their records are kept outside the repository, so this page gives no count for them. They measure the strength of a crate's own tests only: they are not the mutants of the [status rule](../parity.md#the-status-rule), which are copies of the rewrite judged against the original's outputs.
+
 ## Changing the code safely
 
 - **The format.** `serialize` and `parse` must still round trip every bit, which `round_trip_keeps_every_bit` checks, and the serializer's own text must still come back unchanged, which `serialized_table_round_trips_but_hand_written_text_does_not` checks. The example on the reference page is read by `example_parses`, so a format change that the example no longer meets fails `cargo test` until the page is updated. A changed format should get a new magic line, so that a file of the old format is refused rather than misread.
 - **The pairing.** A change to `normalize_name` or to the claiming order changes which rows pair. It should come with a test that fails on the old behaviour, and a pairing already reported against a sealed prediction keeps the rule it was scored under.
-- **The status rule.** A change to `tools/status.py` changes what every generated page says. Run `python -I tools/test_status.py`, then `python -I tools/gen_docs.py`, then `--check` and `tools/check_docs.py`; a page that changes says what changed and why in the [parity log](../parity-log.md).
+- **The status rule.** A change to `tools/status.py` changes what every generated page says. Run `python -I tools/test_status.py`, then `python -I tools/gen_docs.py`, then `--check` and `tools/check_docs.py`; the commit that changes the rule says what changed and why.
 - **Names.** Every name in a test or a comment stays invented. A name of the plug-in enters the code only with the unit that needs it for its interface.
 - **The shape crates.** A change to a rule of the shape model changes the predictions, and a change to the dump form changes every dump; [their page](shape-crates.md#changing-the-code-safely) says what such a change has to keep.
 - **The mask sequence form.** `example_exact_bytes` holds the example manifest, built from two invented frames, and `reference_example_is_canonical` holds its copy on the reference page, so a change to the manifest, to the frame file or to the hash fails `cargo test` until the example and the page change with it. A changed form should get a new `format` value, so that a manifest of the old form is refused (`manifest_format`) rather than misread. The interface file follows the binary: a change to an exit code, a report line or a reason word fails `interface_contract.rs` until the file says the same.

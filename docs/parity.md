@@ -1,6 +1,6 @@
 # Parity
 
-This page defines parity for the rewrite, describes how it is checked against the original Mocha Pro 2024 plug-in, and reports what the checks have found. The [README](../README.md#parity) gives the summary; the [parity log](parity-log.md) gives the history by date.
+This page defines parity for the rewrite, describes how it is checked against the original Mocha Pro 2024 plug-in, and reports what the checks have found. The [README](../README.md#parity) gives the summary.
 
 ## Summary
 
@@ -22,7 +22,7 @@ No result file exists yet, so no unit has a row. A unit is Not started until its
 
 How to read a row:
 
-- **Rung** is the rung of the measurement ladder the file was measured at, and **Rung label** is the label the rule gives its numbers. The label reads none in every case [the status rule](#the-status-rule) gives none, among them while no case is compared, while the tolerance is not 0, and for the rungs the rule does not compute yet.
+- **Rung** is the rung of the measurement ladder the file was measured at, and **Rung label** is the label the rule gives its numbers. The label reads none in every case [the status rule](#the-status-rule) gives none, among them while no case is compared, while the tolerance is not 0, and for the rungs the rule does not compute.
 - **Cases compared** sets the compared cases against the in-contract ones. The rule wants the two equal, so one in-contract case without a reference output holds the row below Matches.
 - **Differing** gives cases, then values. **Call records matching** sets the equal records against the compared ones, and **Mutants killed** the exposed mutants against all of them; a mutant is exposed only when the comparison with the original shows it.
 - **Re-run** is yes when an independent re-run dated after the result matches it, no with the number of differences, stale when the re-run is not dated after the result or either date cannot be read, and none when there is no re-run file.
@@ -65,11 +65,26 @@ This section is the specification. A result file records what was run and with w
 
 The heavy work, builds, emulation and grids, happens on one Linux machine, which keeps the original's files, the references, the call records and the inputs. The repository receives only the small result files, once there are any, and the tools that read them.
 
+### The harness
+
+The harness is the program that loads the original into the emulator and plays its host. It is not in this repository, so this section describes its design and cannot be checked from it.
+
+It starts from [twixtor's harness](https://github.com/baairon/twixtor/blob/8087d06ac43023f954de2cc58583b132a3243ff4/parity/harness/README.md#running-it) at commit 8087d06, which has booted and rendered real plug-ins for the same host. A loader written anew would be a part of the judge that no real plug-in has exercised, and a defect in it would be common to both sides of every comparison. The harness differs from twixtor's only where this plug-in or the fault rule needs it:
+
+- **Unknown calls fault.** Twixtor's harness lets a Windows function with no hook return 0 and lists that as a fidelity risk ([twixtor: assumptions and stand-ins](https://github.com/baairon/twixtor/blob/8087d06ac43023f954de2cc58583b132a3243ff4/README.md#assumptions-and-stand-ins)). Here a call with no entry in the register of host answers stops the run with its name, and every entry names the public documentation it follows.
+- **Dialogs stop the run.** A message box or a dialog stops the run instead of returning a button.
+- **The C runtime runs as its own code,** as in twixtor, so formatted output and the runtime's arithmetic come from the runtime libraries themselves, not from a model of them.
+- **A fixed CPU.** The emulated processor presents one feature set without AVX. A vector instruction outside it, a feature query the table does not list, and the time-stamp and random-number instructions stop the run.
+- **Thread-local storage.** The static thread-local storage of an image that has it is set up before its entry point runs.
+- **Host layouts.** The layouts of the host's structures are compiled from the SDK headers, as in twixtor, with two compiler flags added: one keeps the structure types in the debug data, the other finds every header.
+
+The harness carries unit tests of its own, which run on synthetic plug-in images made for them; none of them loads the original. Neither those tests nor their results can be checked from this repository. The stand-ins the harness applies to every run, the answers at the licence boundary among them, are listed under [stand-ins and assumptions](#stand-ins-and-assumptions).
+
 ### The interface pairing and calibration
 
 The first comparison is of parameter tables, not of outputs. When the plug-in sets itself up, it registers its parameters with the host: for each one an id, a kind, a name, a default, a range and flags. The harness reads that table from the emulated original. Before the original first runs, the rewrite's prediction of the same table is written and sealed, with the SHA-256 of the file and a UTC time, so that no prediction can be adjusted to what the run shows. A sealed file is never edited, and a row changed after the original's output has been seen is void.
 
-The pairing then matches each predicted row with at most one observed row: by the host parameter id where both rows carry one, otherwise by the exact name, then by a normalized name, otherwise not at all. Defaults, ranges and flags are compared as bits, never as printed digits, and neither side is rewritten before the comparison. A prediction left unknown is never read as zero; it is not scored. The pairing passes only when nothing is unmatched on either side, and the field differences are counted beside it. `crates/effect-params` holds the rewrite's side of this: the table format and the comparison ([reference: the pairing](reference.md#the-pairing)).
+The pairing then matches each predicted row with at most one observed row: by the host parameter id where both rows carry one, otherwise by the exact name, then by a normalized name, otherwise not at all. Defaults, ranges and flags are compared as bits, never as printed digits, and neither side is rewritten before the comparison. A cell that the product's documentation does not settle is left unknown in the prediction; an unknown is never read as zero, and it is not scored. The pairing passes only when nothing is unmatched on either side, and the field differences are counted beside it. `crates/effect-params` holds the rewrite's side of this: the table format and the comparison ([reference: the pairing](reference.md#the-pairing)).
 
 The calibration boots the original twice, in separate processes, and compares the two call records and the two dumps of what it registered, byte for byte. A difference there means the harness is not deterministic, and nothing it produces is used as a reference until the cause is found.
 
@@ -102,6 +117,12 @@ A grid that has never failed has not shown that it can. So the rewrite is copied
 ### Stand-ins and logic parity
 
 Some inputs of the original cannot be produced the way After Effects or Windows would produce them. Then both sides read one labelled stand-in, the result file lists it under `stand_ins` or `harness_stand_ins`, and agreement that depends on it is logic parity: it shows that the two programs treat that value alike, and nothing about what a real host would give. Stand-ins are taken from the host's public documentation and never from the rewrite's habits, since a stand-in copied from the rewrite would make every case that reads it prove itself.
+
+### Specifications from static reads
+
+Parts of the original's code are read statically, without running it; [README: legal](../README.md#legal) names the parts. Each read is written up as a specification of method, interfaces and formats: the host interactions in their order, what a stage of a render computes with the formulas, number types and rounding it uses, or the form of the project data. A specification holds no code excerpt and no instruction listing, and it is kept outside the repository, like the predicted tables. Code here that rests on one is written from it and from what the emulator shows.
+
+A specification is not a measurement, and no reading is one. A row that is only read from a specification is not compared, and a unit that rests on such rows carries the label set for them ([the status rule](#the-status-rule)). What [README: limits](../README.md#limits) states about the modules that the original gates behind its licence state and about the planar tracker rests on readings of the original's code and on the rules of the method, not on runs.
 
 ### The status rule
 
@@ -154,7 +175,7 @@ The harness-wide stand-ins the harness is built to apply to every run. The harne
 - **Floating point start state.** The Windows defaults: every exception masked, round to nearest, no flush to zero.
 - **Stacks and threads.** The main thread's stack is 1 MiB, the stand-in value of [twixtor's harness](https://github.com/baairon/twixtor/blob/8087d06ac43023f954de2cc58583b132a3243ff4/parity/harness/README.md#stand-ins) for a host value that is not known, and threads switch only when one waits, in one reproducible order.
 - **Time and randomness.** Never the machine's own: a time read stops the run until a fixed clock is registered, and random bytes come from a seeded stream.
-- **Host services.** A service on the declared list of absent ones is answered "not found"; a request with no declared answer stops the run.
+- **Host services.** A service on the declared list of absent ones is answered "not found"; a request with no declared answer stops the run. Among the absent ones are optional components of Windows that the Microsoft C runtime probes for and that the harness does not model.
 - **Licence, activation and machine identity.** The licence module gets only the boundary answers listed in [README: left out](../README.md#left-out), none of them a licensed state or a machine identity value; any other call it makes to the host stops the run, and so does a licence or activation call from any other part of the original.
 
 ### The NaN rule
@@ -171,7 +192,7 @@ Frames compared against `owner supplied frames` are never a judgement by the emu
 
 Where the original's engine marks each frame it delivers with an overlay, that frame is never a whole frame reference, and no result for a unit judged on such frames reads "matches the emulated original" alone. The samples outside the overlay's footprint may be compared, and only they. The footprint is measured from the original's own frames in the emulator, never estimated from the rewrite, and it is fixed and sealed before any comparison on frames of that geometry. The test cases are built so that every sample whose value depends on the inputs lies outside it; a case that meets it is not compared and counts toward no floor. The samples under the footprint are excluded on both sides and nothing is claimed about them. The overlay is never removed, undone or reconstructed in the original's frames, and the rewrite never paints one. Such a result reads "matches the emulated original outside the overlay footprint", always with the rung, the counts, the number of excluded samples of the total and the judge, and it ranks below Matches: it never reaches Matches or Verified, and it is never counted with them.
 
-This status is a rule of the method that no tool in the repository computes today. `tools/status.py` knows the two reference kinds of the `frames` block above and nothing else: a block that names any other reference kind makes the result file invalid, the result schema has no field for excluded samples, and with an `emulated original` block a unit reaches Matches only when every compared frame is identical. No result of this kind exists.
+This status is a rule of the method that no tool in the repository computes. `tools/status.py` knows the two reference kinds of the `frames` block above and nothing else: a block that names any other reference kind makes the result file invalid, the result schema has no field for excluded samples, and with an `emulated original` block a unit reaches Matches only when every compared frame is identical. No result of this kind exists.
 
 ### Frames supplied by the owner
 
@@ -205,7 +226,7 @@ The original plug-in, the Windows system libraries for the emulator's file syste
 | calibration | two boots of the original that must give the same call record and the same dump |
 | shape case | a text file that describes one contour stored as keyframes and the times at which to query it, read by `shape-predict` |
 | predicted dump | the text the rewrite predicts for a shape case, in the dump form of the reference, written and sealed before the original runs |
-| hypothesis | a rule of the rewrite that no measurement backs yet; the code labels it INFERRED |
+| hypothesis | a rule of the rewrite that no measurement backs; the code labels it INFERRED |
 | in contract | a case whose behaviour the original defines |
 | out of contract | a case whose behaviour the original leaves undefined; counted apart, neither pass nor failure |
 | reference | what the original outputs for a case, produced in the emulator |

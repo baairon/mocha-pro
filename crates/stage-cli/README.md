@@ -2,7 +2,7 @@
 
 `mocha-stage`: a generic frame stage program for the handoff convention (how ffmpeg, twixtor and sapphire pass raw frames to each other: `docs/handoff.md` of the twixtor repository, with the contracts in its `contracts/` folder).
 
-This is step 1 of "How a third plugin joins" for a tool that so far renders nothing of its own. The program offers one stage, `selftest-copy`, a self test that copies frames unchanged and reimplements nothing. It computes, imitates and claims no behaviour of any plug-in; a stage that does is outside the scope of this crate.
+This is step 1 of "How a third plugin joins" for a tool that renders nothing of its own. The program offers one stage, `selftest-copy`, a self test that copies frames unchanged and reimplements nothing. It computes, imitates and claims no behaviour of any plug-in; a stage that does is outside the scope of this crate.
 
 ## Commands
 
@@ -49,7 +49,7 @@ Nothing says a preserve stage must refuse the flag. This program answers it, as 
 
 ## Platforms
 
-- Standard input and output are raw bytes: the Rust standard library does no newline translation on any platform, so the bytes `0x0a`, `0x0d` and `0x1a` pass unchanged on Windows (tested with every byte value on Linux; on Windows this follows from the library's behaviour and was not run; the Windows build compiles and lints clean for `x86_64-pc-windows-gnu`, and was not run there).
+- Standard input and output are raw bytes: the Rust standard library does no newline translation on any platform, so the bytes `0x0a`, `0x0d` and `0x1a` pass unchanged on Windows (tested with every byte value, in a test that CI runs on Linux, macOS and Windows; the program also compiles and lints clean for `x86_64-pc-windows-gnu` on Linux).
 - A closed reader is a write error, not a signal: Rust binaries ignore SIGPIPE on Unix, and a closed pipe is `BrokenPipe` on Windows too. The program exits 4 with `error: broken_pipe: ...` (tested on Linux).
 - A terminal on standard input or output is refused (exit 2) instead of read as text; a Windows console read would otherwise insist on UTF-8.
 - Arguments must be valid UTF-8 text (exit 2 otherwise). No platform specific code, no unsafe code, no dependency beyond the standard library.
