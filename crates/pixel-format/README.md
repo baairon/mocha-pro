@@ -4,7 +4,7 @@ Generic conversion of pixel samples between integer and floating point depths, w
 
 ## Published definitions followed
 
-- After Effects SDK Guide, pixel formats: 8 bit channels run 0 to 255, 16 bit channels run 0 to 32768 (`PF_MAX_CHAN16`), float channels are nominally 0 to 1 and are not clamped. The channel order in memory is ARGB for After Effects and BGRA for Premiere. Colour is premultiplied by alpha by default.
+- After Effects SDK Guide, pixel formats: 8 bit channels run 0 to 255, 16 bit channels run 0 to 32768, float channels are nominally 0 to 1 and are not clamped. The channel order in memory is ARGB for After Effects and BGRA for Premiere. Colour is premultiplied by alpha by default.
 - IEEE 754-2019 section 4.3: roundTiesToEven, roundTowardZero, roundTowardPositive and roundTowardNegative. Round half up (`floor(x + 0.5)`) is added as a fifth mode.
 
 ## What is configuration
@@ -31,7 +31,7 @@ Nothing is fixed behind the API. Each of these is a field of `Config`, or an arg
 
 `premultiply_int` and `unpremultiply_int` compute `colour * alpha / max` and `colour * max / alpha` exactly in integers (a 64 bit numerator, no float), so every rounding mode is exact at every tie. `premultiply_f32` and `unpremultiply_f32` are the float forms.
 
-`Config` offers `convert_sample(from, to, bits)`, `convert_pixel(from, to, [r, g, b, a], AlphaOp)`, `canonical()` (one text line), `Config::parse(text)` and `Config::enumerate(&Space)` (each choice once, in a fixed order). `Order` (`Argb`, `Bgra`, `Rgba`) and `WorldLayout { width, height, rowbytes, origin, depth, order }` give pixel access with a row stride in bytes and a byte origin, after the meaning of `PF_EffectWorld`. Samples of 16 and 32 bit are little endian. A float sample travels as its `f32::to_bits`.
+`Config` offers `convert_sample(from, to, bits)`, `convert_pixel(from, to, [r, g, b, a], AlphaOp)`, `canonical()` (one text line), `Config::parse(text)` and `Config::enumerate(&Space)` (each choice once, in a fixed order). `Order` (`Argb`, `Bgra`, `Rgba`) and `WorldLayout { width, height, rowbytes, origin, depth, order }` give pixel access with a row stride in bytes and a byte origin, after the meaning of the host's world structure. Samples of 16 and 32 bit are little endian. A float sample travels as its `f32::to_bits`.
 
 ## Definitions chosen where the published text is silent
 

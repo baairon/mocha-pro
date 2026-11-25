@@ -55,7 +55,7 @@ impl Rect {
     }
 }
 
-/// PF_RenderRequest (44 bytes).
+/// The host's render request structure (44 bytes).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct RenderRequest {
@@ -67,7 +67,7 @@ pub struct RenderRequest {
     pub reserved: [i32; 4],
 }
 
-/// PF_PreRenderInput (64 bytes).
+/// The host's pre render input structure (64 bytes).
 #[repr(C)]
 pub struct PreRenderInput {
     pub output_request: RenderRequest,
@@ -78,7 +78,7 @@ pub struct PreRenderInput {
     pub device_index: u32,
 }
 
-/// PF_PreRenderOutput (56 bytes).
+/// The host's pre render output structure (56 bytes).
 #[repr(C)]
 pub struct PreRenderOutput {
     pub result_rect: Rect,
@@ -91,7 +91,7 @@ pub struct PreRenderOutput {
     pub delete_pre_render_data_func: *mut c_void,
 }
 
-/// PF_CheckoutResult (76 bytes).
+/// The host's checkout result structure (76 bytes).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct CheckoutResult {
@@ -117,14 +117,14 @@ pub type CheckoutLayerFn = unsafe extern "C" fn(
     *mut CheckoutResult,
 ) -> PfErr;
 
-/// PF_PreRenderCallbacks (16 bytes).
+/// The host's pre render callbacks structure (16 bytes).
 #[repr(C)]
 pub struct PreRenderCallbacks {
     pub checkout_layer: Option<CheckoutLayerFn>,
     pub guid_mix_in_ptr: *mut c_void,
 }
 
-/// PF_PreRenderExtra (24 bytes).
+/// The host's pre render extra structure (24 bytes).
 #[repr(C)]
 pub struct PreRenderExtra {
     pub input: *mut PreRenderInput,
@@ -132,7 +132,7 @@ pub struct PreRenderExtra {
     pub cb: *mut PreRenderCallbacks,
 }
 
-/// PF_SmartRenderInput (72 bytes).
+/// The host's smart render input structure (72 bytes).
 #[repr(C)]
 pub struct SmartRenderInput {
     pub output_request: RenderRequest,
@@ -148,7 +148,7 @@ pub type CheckoutLayerPixelsFn = unsafe extern "C" fn(*mut c_void, i32, *mut *mu
 pub type CheckinLayerPixelsFn = unsafe extern "C" fn(*mut c_void, i32) -> PfErr;
 pub type CheckoutOutputFn = unsafe extern "C" fn(*mut c_void, *mut *mut World) -> PfErr;
 
-/// PF_SmartRenderCallbacks (24 bytes).
+/// The host's smart render callbacks structure (24 bytes).
 #[repr(C)]
 pub struct SmartRenderCallbacks {
     pub checkout_layer_pixels: Option<CheckoutLayerPixelsFn>,
@@ -156,14 +156,14 @@ pub struct SmartRenderCallbacks {
     pub checkout_output: Option<CheckoutOutputFn>,
 }
 
-/// PF_SmartRenderExtra (16 bytes).
+/// The host's smart render extra structure (16 bytes).
 #[repr(C)]
 pub struct SmartRenderExtra {
     pub input: *mut SmartRenderInput,
     pub cb: *mut SmartRenderCallbacks,
 }
 
-/// PF_LayerDef / PF_EffectWorld, the world structure (120 bytes).
+/// The host's world structure (120 bytes).
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct World {
