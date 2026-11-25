@@ -1,5 +1,5 @@
-//! Channel orders and worlds with a row stride, after the meaning of `PF_EffectWorld`: a width,
-//! a height and a `rowbytes` that is a byte count, not a pixel count.
+//! Channel orders and worlds with a row stride, after the meaning of the host's world structure:
+//! a width, a height and a `rowbytes` that is a byte count, not a pixel count.
 
 use crate::mode::Depth;
 use std::fmt;

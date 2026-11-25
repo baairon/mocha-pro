@@ -4,7 +4,7 @@
 //! Published definitions the crate follows:
 //!
 //! - After Effects SDK Guide, pixel formats: 8 bit channels run 0 to 255, 16 bit channels run 0 to
-//!   32768 (`PF_MAX_CHAN16`), float channels are nominally 0 to 1 and unclamped; the channel order
+//!   32768, float channels are nominally 0 to 1 and unclamped; the channel order
 //!   in memory is ARGB for After Effects and BGRA for Premiere; colour is premultiplied by alpha by
 //!   default.
 //! - IEEE 754-2019 section 4.3: the rounding directions roundTiesToEven, roundTowardZero,
