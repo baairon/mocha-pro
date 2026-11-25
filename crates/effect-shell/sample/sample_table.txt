@@ -1,0 +1,36 @@
+# made up sample table for the effect-shell crate, not a real effect
+table v1
+#@global	my_version=0x00020001	out_flags=0x1234	out_flags2=0x400	about=Sample effect shell, made up text
+#@shell	placeholder_name=Stub Row	placeholder_flags=0x6c
+#@	id=101	ui=0x8
+Start Box	checkbox	i:1	?	?	0x1
+#@	id=102	label=Go
+Push	button	?	?	?	0x1
+#@	id=103	precision=1	display=1	fs_flags=1	tol=0.05	slider=0,50
+Amount	float	f:25.5	i:0	i:100	0x1
+#@	id=104
+Count	int	i:7	i:0	i:20	0x0
+#@	id=105	choices=Low|Mid|High|Extra	choice_bits=-,-,2,3	vis_bit=1
+Quality	popup	i:3	?	?	0x2
+#@	id=106
+Pick Layer	layer	i:0	?	?	0x0
+#@	id=107	xy=25,75	restrict=1
+Corner	point	?	?	?	0x1
+#@	id=108
+Turn	angle	f:90	i:-360	i:360	0x0
+#@	id=109
+Tint	color	i:4278190335	?	?	0x0
+#@	id=110
+Box	group	?	?	?	0x20
+#@	type=group_end	id=111
+Box End	group	?	?	?	0x0
+#@	type=arb	id=112	ui=0x34
+Data	int	?	?	?	0x0
+#@	type=no_data	id=113	ui_w=90	ui_h=23	ui=8
+Custom Area	int	?	?	?	0x0
+#@	type=fixslider	id=114	precision=2	slider=0,10
+Fixed	float	f:1.5	i:0	i:10	0x0
+#@	type=slider	id=115	ae_only=1	label=x
+Host Only	int	i:3	i:0	i:9	0x0
+#@	id=116	vis_bit=4
+Gated Box	checkbox	i:0	?	?	0x1

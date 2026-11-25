@@ -1,0 +1,21 @@
+# made up sample table (format version 2) for the effect-shell crate, not a real effect
+table v2
+#@global	my_version=0x00030002	out_flags=0x2b0	out_flags2=0x1e0	about=Sample v2 shell, made up text
+#@shell	reset=each	fill=0x00	refcon=0x00c0ffee00112233	register_ui=3
+i:4101	Blob One	arbitrary	?	?	?	0x0	0x71	0x78	d:a5b6c7d8
+i:4102	Blob Two	arbitrary	?	?	?	0x0	0x72	0x78	d:
+i:4103	Flag A	checkbox	i:1	?	?	0x1	0x51	0x61	l:tick
+i:4104	Mode	popup	i:2	?	?	0x2	0x73	0x0	c:Alpha|Beta|(-|Gamma
+i:4105	Src	layer	none	?	?	0x0	0x7d	0x0	-
+i:4106	Gain	float	f:12.5	f:-5	f:50	0x1	0x63	0x0	s:3:0x41:c000000000000000:4034000000000000
+i:4107	Spot	point	?	?	?	0x1	0x65	0x0	p:4039000000000000:4052c00000000000
+i:4108	Dial	angle	f:45	f:-90	f:90	0x0	0x0	0x0	-
+#@	ui_suite=Sample options...
+i:4109		button	?	?	?	0x0	0x6d	0x6	l:Press Me
+#@	defer_err=1
+i:4110	Box	group	?	?	?	0x0	0x0	0x0	-
+i:4111		group_end	?	?	?	0x0	0x0	0x0	-
+#@	ui_w=61	ui_h=57
+i:4112	Pad	nodata	?	?	?	0x0	0x0	0xa	-
+i:4113	Count	int	i:7	i:0	i:20	0x0	0x79	0x0	-
+i:4114	Tint	color	i:4278190335	?	?	0x0	0x0	0x0	-

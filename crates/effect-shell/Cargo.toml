@@ -1,0 +1,22 @@
+[package]
+name = "effect-shell"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "A generic After Effects effect plug-in shell: entry point, command dispatch and parameter registration from a table given at build time."
+build = "build.rs"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+effect-params = { path = "../effect-params", default-features = false }
+
+[features]
+default = ["std"]
+std = ["effect-params/std"]
+# no_std plus alloc build for the emulator image; build with --no-default-features.
+freestanding = []
+# Do not export EffectMain: another crate exports it and calls entry_with_units.
+external-entry = []

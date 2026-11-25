@@ -1,0 +1,15 @@
+# Made up sample property list (names, codes and values are invented).
+# Format: see the module documentation of src/pipl.rs. Point EFFECT_SHELL_PIPL at your own file.
+signature 8BIM
+kind eFKT
+name "Sample Effect"
+category "Sample Category"
+entry_win64 "EffectMain"
+pair ePVR 2 0
+pair eSVR 13 20
+u32 eVER 0x00010203
+info
+global_flags 0x00001234
+global_flags2 0x00000056
+match_name "sample_effect_demo"
+u32 zzzz 7

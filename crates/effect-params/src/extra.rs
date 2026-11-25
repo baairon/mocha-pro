@@ -19,6 +19,13 @@
 //!
 //! The writer emits lower case hex and the escapes above only.
 
+#[cfg(not(feature = "std"))]
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
+
 /// Extra data of a parameter. Unknown is never the same as `Absent`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Extra {
