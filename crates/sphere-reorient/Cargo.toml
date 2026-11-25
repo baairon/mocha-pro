@@ -1,0 +1,9 @@
+[package]
+name = "sphere-reorient"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Reorientation of equirectangular, cube map and stereo layout images as a pure f64 coordinate map."
+
+[dependencies]
