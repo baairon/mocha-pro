@@ -2,7 +2,7 @@
 
 [twixtor](https://github.com/baairon/twixtor) and [sapphire](https://github.com/baairon/sapphire) share a handoff convention: a raw frame contract, stage commands that read frames on standard input and write them on standard output, a registry by which the tools find each other, and a conformance suite that every stage has to pass. Its definition is [twixtor's `docs/handoff.md`](https://github.com/baairon/twixtor/blob/main/docs/handoff.md), which both repositories hold byte for byte.
 
-This page states where this repository stands against that convention. In one sentence: it is a stage provider with one stage, and that stage is a self test. `mocha-stage` prints a stage manifest and runs `selftest-copy`, which copies frames unchanged, so that the plumbing between the tools can be checked before any unit of this repository computes a frame. No stage reimplements any output of the plug-in. Beside the stage program there are two frame tools, a set of file forms, and two older command line programs with exit codes of their own.
+This page states where this repository stands against that convention. In one sentence: it is a stage provider with one stage, and that stage is a self test. `mocha-stage` prints a stage manifest and runs `selftest-copy`, which copies frames unchanged, so that the plumbing between the tools can be checked before any unit of this repository computes a frame. No stage reimplements any output of the plug-in. Beside the stage program there are two frame tools, a set of file forms, and two command line programs with exit codes of their own.
 
 ## Contents
 
@@ -96,7 +96,7 @@ With `--stage`, the conformance tool runs level 1 (the stage matrix: depths, siz
 
 ## Finding the provider
 
-A peer finds a provider that has no registry entry in one of two ways the convention defines: `--provider FILE`, with a `*.stage.json` manifest, or the `HANDOFF_PROVIDERS` folders. This repository ships no `*.stage.json` file yet; the manifest is what `mocha-stage list --json` prints, and a provider file can be written from it. Until one is shipped and checked from a peer's side, discovery is a [known gap](#known-gaps).
+A peer finds a provider that has no registry entry in one of two ways the convention defines: `--provider FILE`, with a `*.stage.json` manifest, or the `HANDOFF_PROVIDERS` folders. This repository ships no `*.stage.json` file; the manifest is what `mocha-stage list --json` prints, and a provider file can be written from it. Until one is shipped and checked from a peer's side, discovery is a [known gap](#known-gaps).
 
 ## What can be exchanged as files
 
@@ -109,11 +109,11 @@ Each form is a plain file with a specification in the [reference](reference.md) 
 | `shape-1` dump | The predicted report for a case, as text with floats in a canonical hexadecimal form. | Written by `shape-predict`. | [The dump form](reference.md#the-dump-form) |
 | `mask-1` sequence | A folder with `manifest.txt` and one binary PGM file per frame, one channel at depth 8 or 16, with a SHA-256 for every frame in the manifest. | Written by the `mask-seq` library, checked by `mask-validate`. | [The mask sequence form](reference.md#the-mask-sequence-form) |
 | Raw frame file | A frame stream of the contract above, stored as a file. | Written by `frame-gen`, compared by `frame-cmp`, read and written by `mocha-stage`. | [The frame contract](reference.md#the-frame-contract) |
-| Result file | The measured outcome of one unit: rung, judge, comparator, counts, mutants, stand-ins, and for a unit of frames the geometries compared. | Read by `tools/status.py` and `tools/gen_docs.py`. No result file exists yet. | `docs/data/result_schema.json`, [Status of one result file](reference.md#status-of-one-result-file) |
+| Result file | The measured outcome of one unit: rung, judge, comparator, counts, mutants, stand-ins, and for a unit of frames the geometries compared. | Read by `tools/status.py` and `tools/gen_docs.py`. No result file exists. | `docs/data/result_schema.json`, [Status of one result file](reference.md#status-of-one-result-file) |
 
 ## The two file programs
 
-`shape-predict` and `mask-validate` are older than the stage program and are not stages. Both take one path, read no standard input, and are deterministic.
+`shape-predict` and `mask-validate` are not stages. Both take one path, read no standard input, and are deterministic.
 
 | Program | Argument | Standard output | Exit codes |
 |---|---|---|---|
@@ -140,7 +140,7 @@ Measured against the convention:
 | Reports and the stall watch | `mocha-stage` writes no report. The wrappers of the convention have not been run around it. |
 | The conformance tool | Not held here, and not run by continuous integration. |
 | Conformance levels 0, 2, 4 and 5 | Not run. |
-| Conformance on Windows | Not run. The stage program has not been built or tested on Windows by this repository's CI yet; it passes `cargo clippy` for the target `x86_64-pc-windows-gnu` on Linux. |
+| Conformance on Windows | Not run: the conformance tool is run on Linux only. CI builds the stage program and runs its tests on Windows ([Platforms](#platforms)), and the program passes `cargo clippy` for the target `x86_64-pc-windows-gnu` on Linux. |
 | ffmpeg | Never used here. |
 | A peer | Neither twixtor nor sapphire has been chained with `mocha-stage`. |
 

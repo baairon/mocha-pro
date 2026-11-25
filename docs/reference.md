@@ -425,7 +425,7 @@ mocha-stage apply selftest-copy --width W --height H --depth 8|16|32 --fps N[/D]
 
 An error is one line on standard error, `error: <code>: <message>`, with the code words of the convention.
 
-The `contracts/` folder is held byte for byte as twixtor publishes it at commit 8087d06 and is not edited here. The convention's conformance tool is not held here. It was run from a twixtor checkout at that commit against the built `mocha-stage` on Linux, with `python -I tools/conformance.py --stage "<path to>/mocha-stage apply selftest-copy" --full` inside the checkout: it runs levels 1 and 3, the two that need neither ffmpeg nor the convention's control tool, and gave level 1: 270 passed, level 3: 33 passed, exit 0. The [handoff](handoff.md) page states which steps of joining the convention this covers.
+The `contracts/` folder is held byte for byte as twixtor publishes it at commit 8087d06 and is not edited here. The convention's conformance tool is not held here. Run from a twixtor checkout at that commit against the built `mocha-stage` on Linux, with `python -I tools/conformance.py --stage "<path to>/mocha-stage apply selftest-copy" --full` inside the checkout, it runs levels 1 and 3, the two that need neither ffmpeg nor the convention's control tool, and gives level 1: 270 passed, level 3: 33 passed, exit 0. The [handoff](handoff.md) page states which steps of joining the convention this covers.
 
 ### The generic crates
 
@@ -516,11 +516,11 @@ Cited sources: D. C. Brown, "Decentering Distortion of Lenses", Photogrammetric 
 
 The fields of `Config` are the border, the fractional radius rule, the truncation factor, the exponential method and its term count, the radius to sigma factor, the profile and direction of the ramp, the inside threshold and the edge offset. `Config::enumerate` lists 288 combinations of the discrete choices.
 
-Cited sources: P. F. Felzenszwalb and D. P. Huttenlocher, "Distance Transforms of Sampled Functions", Theory of Computing 8(19), 2012, sections 4 and 5; R. Szeliski, "Computer Vision: Algorithms and Applications", 2nd edition, 2022, section 3.2; M. Abramowitz and I. Stegun, "Handbook of Mathematical Functions", 1964, sections 4.2 and 4.3; the smoothstep definition of the Khronos Group's "The OpenGL Shading Language" specification. The section numbers were written from memory and not read again online. Left open: the border rule, the fractional radius rule, the truncation, how the exponential is evaluated, the radius to sigma factor, the ramp profile and direction, the threshold and the edge offset.
+Cited sources: P. F. Felzenszwalb and D. P. Huttenlocher, "Distance Transforms of Sampled Functions", Theory of Computing 8(19), 2012, sections 4 and 5; R. Szeliski, "Computer Vision: Algorithms and Applications", 2nd edition, 2022, section 3.2; M. Abramowitz and I. Stegun, "Handbook of Mathematical Functions", 1964, sections 4.2 and 4.3; the smoothstep definition of the Khronos Group's "The OpenGL Shading Language" specification. The section numbers are cited from memory and are not checked against the sources. Left open: the border rule, the fractional radius rule, the truncation, how the exponential is evaluated, the radius to sigma factor, the ramp profile and direction, the threshold and the edge offset.
 
 Five further crates compute from published methods and from nothing else: `sphere-reorient`, `mesh-warp`, `blend-ops`, `key-eval` and `planar-track`. Each one is generic: where the published method leaves a choice open, such as a pixel centre, the side of a tie, a rounding rule or the order of two tests, the choice is a field of an explicit configuration type with a documented default, and the crate can list the configurations it accepts. A default is one point of that list and claims nothing about the original. None of the six computes anything of the plug-in until a configuration has been selected by comparing its output with the original's under the [parity](parity.md) rules, and none has been. Each crate's own `README.md` gives its sources with their sections, and the documentation comments of its configuration type give the meaning of every field.
 
-All five compute in IEEE 754 floating point with addition, subtraction, multiplication, division, comparison and square root, plus `floor`, `round` and the ceiling where a crate says so, with no fused multiply add and no transcendental function of the platform's maths library. On that reading of the code a run gives the same bits on every platform that follows IEEE 754; the tests of this version ran on Linux.
+All five compute in IEEE 754 floating point with addition, subtraction, multiplication, division, comparison and square root, plus `floor`, `round` and the ceiling where a crate says so, with no fused multiply add and no transcendental function of the platform's maths library. On that reading of the code a run gives the same bits on every platform that follows IEEE 754; CI runs their tests on Linux, macOS and Windows.
 
 #### `sphere-reorient`
 
@@ -603,7 +603,7 @@ Its tests compare its results on a sequence with the truth within a stated toler
 
 ## Build
 
-Run from the repository root with a stable Rust toolchain. The manifests set no minimum Rust version; the [test runs](parity-log.md#test-runs-2026-11-17) used Rust 1.94.0 and 1.100.0. No crate depends on anything outside the workspace, so the build needs no network.
+Run from the repository root with a stable Rust toolchain. The manifests set no minimum Rust version; the crates are tested with Rust 1.94.0, and CI installs the stable toolchain. No crate depends on anything outside the workspace, so the build needs no network.
 
 ```sh
 cargo build --release
@@ -716,8 +716,7 @@ This file specifies what the repository holds. The other files each cover one co
 | File | Specifies |
 |---|---|
 | [`README.md`](../README.md) | What the project is, the generated status, how the verification runs, the limits, what is left out, the legal notes. |
-| [`docs/parity.md`](parity.md) | The definition and the measurement of parity: the bar, the pairing of the interface and the calibration, grids and the contract, call records, mutants, stand-ins, the status rule, the wording, the limits of a result, and the generated status, pairing and notes tables. |
-| [`docs/parity-log.md`](parity-log.md) | The dated record of how the results were reached. |
+| [`docs/parity.md`](parity.md) | The definition and the measurement of parity: the bar, the harness, the pairing of the interface and the calibration, grids and the contract, call records, mutants, stand-ins, the specifications written from static reads, the status rule, the wording, the limits of a result, and the generated status, pairing and notes tables. |
 | [`docs/reproduce.md`](reproduce.md) | The checks that need only this repository, the inputs you bring, and the steps that produce the evidence again. |
 | [`docs/internals/README.md`](internals/README.md) | How the crates are put together, the rules their code keeps, the checks that cover them, and what a change has to leave passing. |
 | [`docs/internals/shape-crates.md`](internals/shape-crates.md) | The two shape crates in detail: what they compute, the hypotheses with the code and the tests behind each, and what a change to them has to keep. |
