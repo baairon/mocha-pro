@@ -86,3 +86,15 @@ version = "0.1.0"
 [[package]]
 name = "stage-cli"
 version = "0.1.0"
+dependencies = [
+ "contour-eval",
+ "coverage-raster",
+ "lens-model",
+ "mesh-warp",
+ "pixel-format",
+ "planar-track",
+ "planar-xform",
+ "resample",
+ "soft-edge",
+ "sphere-reorient",
+]
