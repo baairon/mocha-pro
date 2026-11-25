@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "name": "stage-depth-quantise",
+  "summary": "a generic stage of mocha-stage: every sample of each frame snapped to the values of an 8 bit or 16 bit integer grid with the pixel-format crate, by a conversion to that depth and back; the stream keeps its depth; a published method under explicit configuration, not compared with any product",
+  "binaries": [
+    {"name": "mocha-stage", "arguments": "apply depth-quantise --width W --height H --depth 8|16|32 --fps N[/D] [--frames N] [--describe] [--param K=V]...", "stdin": "whole raw frames; not read with --describe", "stdout": "the frames of the stage, nothing else; with --describe one line of JSON", "stderr": "empty on exit 0; exactly one line error: CODE: MESSAGE on a failure"}
+  ],
+  "frame_contract": "frames/2 raw frames: depth 8 is packed rgba (4 bytes per pixel), depth 16 is packed rgba64le (8 bytes), depth 32 is planar gbrapf32le (16 bytes, planes G, B, R, A, 1.0 is full scale); whole frames back to back, no header, no padding, straight alpha, a frame of at most 4 GiB; a stream that ends inside a frame is a partial frame",
+  "parameters": [
+    {"id": "levels", "kind": "popup", "default": "8", "accepts": "8, 16", "keyed": false, "maps_to": "The integer depth of the grid the samples are snapped to."},
+    {"id": "u16_max", "kind": "int", "default": "65535", "accepts": "1 to 65535", "keyed": false, "maps_to": "The integer that stands for full scale on the 16 bit grid (Config::u16_max); read when levels is 16."},
+    {"id": "rounding", "kind": "popup", "default": "half-up", "accepts": "half-up, ties-even, truncate, floor, ceil", "keyed": false, "maps_to": "How a real number becomes an integer (Config::rounding)."},
+    {"id": "precision", "kind": "popup", "default": "f64", "accepts": "f32, f64", "keyed": false, "maps_to": "The floating point type of the arithmetic (Config::precision)."},
+    {"id": "clamp", "kind": "popup", "default": "range-nan-zero", "accepts": "none, range, range-nan-zero", "keyed": false, "maps_to": "What happens to a rounded value outside the grid or to a value that is not a number (Config::clamp)."}
+  ],
+  "layers": [
+
+  ],
+  "geometry": "preserve: the output has the width, height, depth, rate and frame count of the input; --describe answers the geometry of the request",
+  "sample_rule": "computed on bit patterns: an 8 or 16 bit sample is its integer, with full scale 255 or 65535, and a depth 32 sample is the bits of its float; the stage itself neither clamps nor rounds, the rules of the parameters do; each sample is converted from the depth of the stream to the grid and back with Config::convert_sample; the grid is 8 bit with full scale 255 or 16 bit with full scale u16_max",
+  "error_line": "error: CODE: MESSAGE, one line on standard error, where CODE is usage, unsupported, bad_input, partial_frame, broken_pipe or stage_failed",
+  "exit_codes_table": [
+    {"code": 0, "means": "every input frame was processed and written, or --describe printed its answer", "table": "the table's 0"},
+    {"code": 1, "means": "stage_failed: the output could not be written for a reason other than a closed pipe", "table": "the table's stage_failed"},
+    {"code": 2, "means": "usage: a bad or missing option, a parameter or a layer given twice, a layer with an empty path", "table": "the table's usage"},
+    {"code": 3, "means": "unsupported: a depth the stage does not take, a parameter or a layer the stage does not have, a value the stage refuses", "table": "the table's unsupported"},
+    {"code": 4, "means": "bad_input, partial_frame or broken_pipe: a failed read, input that ends inside a frame, a frame count other than --frames, a layer file that cannot be read or parsed, a reader that went away", "table": "the table's bad_input, partial_frame and broken_pipe"}
+  ],
+  "unpinned_paths": [
+    {"path": "stage_failed", "exit": 1, "why": "a write to standard output that fails for a reason other than a closed pipe; no test makes one, because it needs a device that differs between systems"},
+    {"path": "broken_pipe", "exit": 4, "why": "a reader that closes the pipe while the stage writes; the convention's conformance tool exercises it, the rows of this file do not"}
+  ],
+  "exit_codes": [
+    {"tool": "mocha-stage", "code": 0, "scenario": "eight_bit_stream_on_the_eight_bit_grid", "args": "apply depth-quantise --width 1 --height 1 --depth 8 --fps 24/1", "stdin": "007f80ff", "keys": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "hex", "stdout": "007f80ff"},
+    {"tool": "mocha-stage", "code": 0, "scenario": "grid_of_two_values", "args": "apply depth-quantise --width 1 --height 1 --depth 8 --fps 24/1 --param levels=16 --param u16_max=1", "stdin": "007f80ff", "keys": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "hex", "stdout": "0000ffff"},
+    {"tool": "mocha-stage", "code": 0, "scenario": "grid_of_four_values", "args": "apply depth-quantise --width 2 --height 1 --depth 8 --fps 24/1 --param levels=16 --param u16_max=3", "stdin": "002a2b647f80c8ff", "keys": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "hex", "stdout": "0000555555aaaaff"},
+    {"tool": "mocha-stage", "code": 0, "scenario": "sixteen_bit_stream_on_the_eight_bit_grid", "args": "apply depth-quantise --width 1 --height 1 --depth 16 --fps 24/1", "stdin": "0000e8030080ffff", "keys": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "hex", "stdout": "000004048080ffff"},
+    {"tool": "mocha-stage", "code": 0, "scenario": "grid_of_two_values_floor", "args": "apply depth-quantise --width 1 --height 1 --depth 8 --fps 24/1 --param levels=16 --param u16_max=1 --param rounding=floor", "stdin": "007f80ff", "keys": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "hex", "stdout": "000000ff"},
+    {"tool": "mocha-stage", "code": 0, "scenario": "describe", "args": "apply depth-quantise --width 7 --height 4 --depth 16 --fps 24/1 --frames 3 --describe --param levels=16", "stdin": "none", "keys": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "exact", "stdout": "{\"ok\":true,\"contract\":\"frames/2\",\"stage\":\"depth-quantise\",\"width\":7,\"height\":4,\"depth\":16,\"fps\":\"24/1\",\"frames\":3}\n"},
+    {"tool": "mocha-stage", "code": 3, "scenario": "unsupported_any_layer", "args": "apply depth-quantise --width 1 --height 1 --depth 8 --fps 24/1 --layer keys=x", "stdin": "007f80ff", "keys": "none", "stderr_kind": "exact", "stderr": "error: unsupported: depth-quantise takes no layers: `keys` is not one\n", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "mocha-stage", "code": 0, "scenario": "empty_input", "args": "apply depth-quantise --width 1 --height 1 --depth 8 --fps 24/1", "stdin": "none", "keys": "none", "stderr_kind": "empty", "stderr": "", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "mocha-stage", "code": 2, "scenario": "usage_unknown_option", "args": "apply depth-quantise --width 1 --height 1 --depth 8 --fps 24/1 --no-such-option", "stdin": "007f80ff", "keys": "none", "stderr_kind": "exact", "stderr": "error: usage: unknown option `--no-such-option`\n", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "mocha-stage", "code": 2, "scenario": "usage_parameter_twice", "args": "apply depth-quantise --width 1 --height 1 --depth 8 --fps 24/1 --param levels=16 --param levels=16", "stdin": "007f80ff", "keys": "none", "stderr_kind": "exact", "stderr": "error: usage: parameter `levels` given more than once\n", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "mocha-stage", "code": 2, "scenario": "usage_missing_fps", "args": "apply depth-quantise --width 1 --height 1 --depth 8", "stdin": "007f80ff", "keys": "none", "stderr_kind": "exact", "stderr": "error: usage: apply needs --fps\n", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "mocha-stage", "code": 3, "scenario": "unsupported_depth", "args": "apply depth-quantise --width 1 --height 1 --depth 12 --fps 24/1", "stdin": "007f80ff", "keys": "none", "stderr_kind": "exact", "stderr": "error: unsupported: depth 12 is not supported: depth-quantise takes 8, 16 or 32\n", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "mocha-stage", "code": 3, "scenario": "unsupported_unknown_parameter", "args": "apply depth-quantise --width 1 --height 1 --depth 8 --fps 24/1 --param no_such_param=1", "stdin": "007f80ff", "keys": "none", "stderr_kind": "exact", "stderr": "error: unsupported: depth-quantise has no parameter `no_such_param`: it takes levels, u16_max, rounding, precision, clamp\n", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "mocha-stage", "code": 3, "scenario": "unsupported_bad_value", "args": "apply depth-quantise --width 1 --height 1 --depth 8 --fps 24/1 --param levels=no-such-value", "stdin": "007f80ff", "keys": "none", "stderr_kind": "exact", "stderr": "error: unsupported: bad value for `levels`: `no-such-value` is not one of 8, 16\n", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "mocha-stage", "code": 3, "scenario": "unsupported_keyed_value_on_the_command_line", "args": "apply depth-quantise --width 1 --height 1 --depth 8 --fps 24/1 --param levels=1@0;2@5", "stdin": "007f80ff", "keys": "none", "stderr_kind": "exact", "stderr": "error: unsupported: bad value for `levels`: a keyed value is not taken on the command line; give a key file with --layer keys=PATH\n", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "mocha-stage", "code": 3, "scenario": "unsupported_unknown_layer", "args": "apply depth-quantise --width 1 --height 1 --depth 8 --fps 24/1 --layer no_such_layer=x", "stdin": "007f80ff", "keys": "none", "stderr_kind": "exact", "stderr": "error: unsupported: depth-quantise takes no layers: `no_such_layer` is not one\n", "stdout_kind": "empty", "stdout": ""},
+    {"tool": "mocha-stage", "code": 4, "scenario": "partial_frame", "args": "apply depth-quantise --width 1 --height 1 --depth 8 --fps 24/1", "stdin": "007f80ff007f80", "keys": "none", "stderr_kind": "exact", "stderr": "error: partial_frame: frame 1: the input ends inside a frame (3 of 4 bytes) after 1 whole frames\n", "stdout_kind": "hex", "stdout": "007f80ff"},
+    {"tool": "mocha-stage", "code": 4, "scenario": "bad_input_frame_count", "args": "apply depth-quantise --width 1 --height 1 --depth 8 --fps 24/1 --frames 2", "stdin": "007f80ff", "keys": "none", "stderr_kind": "exact", "stderr": "error: bad_input: the input holds 1 frames, but --frames says 2\n", "stdout_kind": "hex", "stdout": "007f80ff"}
+  ]
+}

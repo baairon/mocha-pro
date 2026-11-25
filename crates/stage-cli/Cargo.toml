@@ -4,8 +4,20 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
-description = "A generic frame stage program for the handoff convention: a stage manifest and a pass through self test stage that copies raw frames unchanged."
+description = "A frame stage program for the handoff convention: a stage registry, a stage manifest, a pass through self test stage and generic stages over the crates of the workspace."
 
 [[bin]]
 name = "mocha-stage"
 path = "src/main.rs"
+
+[dependencies]
+contour-eval = { path = "../contour-eval" }
+coverage-raster = { path = "../coverage-raster" }
+lens-model = { path = "../lens-model" }
+mesh-warp = { path = "../mesh-warp" }
+pixel-format = { path = "../pixel-format" }
+planar-track = { path = "../planar-track" }
+planar-xform = { path = "../planar-xform" }
+resample = { path = "../resample" }
+soft-edge = { path = "../soft-edge" }
+sphere-reorient = { path = "../sphere-reorient" }

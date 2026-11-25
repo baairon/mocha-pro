@@ -96,19 +96,29 @@ fn list_json_is_the_manifest() {
 }
 
 #[test]
-fn list_json_names_exactly_one_stage() {
+fn list_json_names_each_listed_stage_once() {
     let text = String::from_utf8(spawn(&["list", "--json"], b"").out).unwrap();
-    assert_eq!(text.matches("\"kind\"").count(), 1);
-    assert_eq!(text.matches("\"geometry\"").count(), 1);
+    let listed = String::from_utf8(spawn(&["list"], b"").out).unwrap();
+    assert_eq!(text.matches("\"geometry\"").count(), listed.lines().count());
+    for id in listed.lines() {
+        let entry = format!("{{\"id\":\"{id}\",\"kind\"");
+        assert_eq!(text.matches(&entry).count(), 1, "{id}");
+    }
 }
 
 #[test]
 fn list_text_has_one_line_per_stage() {
     let r = spawn(&["list"], b"");
-    assert_eq!(
-        (r.code, String::from_utf8(r.out).unwrap()),
-        (0, "selftest-copy\n".to_string())
-    );
+    let text = String::from_utf8(r.out).unwrap();
+    assert_eq!(r.code, 0);
+    assert!(text.starts_with("selftest-copy\n"), "{text}");
+    assert!(text.ends_with('\n'));
+    let mut ids: Vec<&str> = text.lines().collect();
+    assert!(ids.iter().all(|id| !id.is_empty()));
+    let count = ids.len();
+    ids.sort_unstable();
+    ids.dedup();
+    assert_eq!(ids.len(), count);
 }
 
 #[test]

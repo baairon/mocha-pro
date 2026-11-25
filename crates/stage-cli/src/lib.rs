@@ -1,24 +1,36 @@
-//! `mocha-stage`: a generic frame stage program for the handoff convention.
+//! `mocha-stage`: a stage program for the handoff convention.
 //!
-//! It implements step 1 of joining the convention for a tool that renders nothing of its own: a
-//! stage manifest (`list --json`) and `apply STAGE ...` over raw frames on standard input and
-//! output with the stage exits. Its one stage, `selftest-copy`, is a self test that copies frames
-//! unchanged and reimplements nothing. Nothing here computes or claims any behaviour of a plug-in.
+//! It implements step 1 of joining the convention: a stage manifest (`list --json`) and
+//! `apply STAGE ...` over raw frames on standard input and output with the stage exits. The
+//! stages come from a registry. `selftest-copy` is a self test that copies frames unchanged and
+//! reimplements nothing. Every other stage is generic: it computes a published method under
+//! explicit configuration and claims nothing about any plug-in.
 //!
-//! The modules: [`args`] (command line), [`stage`] (the stage, the manifest, the describe
-//! answer), [`run`] (the frame loop), [`frame`] (the raw frame sizes) and [`error`] (the error
-//! rows and their exits).
+//! The modules: [`args`] (command line), [`registry`] (what a stage declares, the provider, the
+//! manifest and the describe answer), [`params`] (typed `--param` and `--layer`), [`keys`] (the
+//! key file for values that change per frame), [`stages`] (one module per stage), [`run`] (the
+//! frame loops), [`pixels`] (frames as float samples), [`frame`] (the raw frame sizes),
+//! [`stage`] (the provider constants and the documents of the provider) and [`error`]
+//! (the error rows and their exits).
+//!
+//! A program can build its own [`registry::Provider`] and call [`run_cli_with`].
 
 pub mod args;
 pub mod error;
 pub mod frame;
+pub mod keys;
+pub mod params;
+pub mod pixels;
+pub mod registry;
 pub mod run;
 pub mod stage;
+pub mod stages;
 
 use std::io::{Read, Write};
 
 use args::Command;
 use error::StageError;
+use registry::Provider;
 
 /// The streams of a run and what is known about them.
 pub struct Io<'a> {
@@ -46,20 +58,30 @@ fn emit(io: &mut Io<'_>, text: &str) -> Result<(), StageError> {
         })
 }
 
-/// Run one command line (the arguments after the program name).
+/// Run one command line (the arguments after the program name) for the provider.
 pub fn execute(args: &[String], io: &mut Io<'_>) -> Result<(), StageError> {
+    execute_with(&stages::provider(), args, io)
+}
+
+/// Run one command line for `provider`.
+pub fn execute_with(
+    provider: &Provider,
+    args: &[String],
+    io: &mut Io<'_>,
+) -> Result<(), StageError> {
     match args::parse(args)? {
-        Command::Help => emit(io, args::HELP),
-        Command::Version => emit(io, &format!("{}\n", stage::version_text())),
-        Command::List { json: true } => emit(io, &format!("{}\n", stage::manifest_json())),
-        Command::List { json: false } => emit(io, &stage::list_text()),
+        Command::Help => emit(io, &args::HELP.replace(stage::PROGRAM, provider.program)),
+        Command::Version => emit(io, &format!("{}\n", provider.version)),
+        Command::List { json: true } => emit(io, &format!("{}\n", provider.manifest_json(None))),
+        Command::List { json: false } => emit(io, &provider.list_text()),
+        Command::Provider { program } => emit(
+            io,
+            &format!("{}\n", provider.manifest_json(program.as_deref())),
+        ),
         Command::Apply(request) => {
-            let checked = stage::check(&request)?;
+            let (stage, plan) = provider.plan(&request)?;
             if request.describe {
-                return emit(
-                    io,
-                    &format!("{}\n", stage::describe_json(&request, &checked)),
-                );
+                return emit(io, &format!("{}\n", registry::describe_json(&plan)));
             }
             if io.input_is_terminal {
                 return Err(StageError::usage(
@@ -71,18 +93,25 @@ pub fn execute(args: &[String], io: &mut Io<'_>) -> Result<(), StageError> {
                     "refusing to write raw frames to a terminal: pipe them out",
                 ));
             }
-            let bytes = usize::try_from(checked.frame_bytes).map_err(|_| {
-                StageError::usage("a frame of this size does not fit in memory on this platform")
-            })?;
-            run::copy_frames(io.input, io.output, bytes, request.frames).map(|_| ())
+            stage.run(&plan, io.input, io.output).map(|_| ())
         }
     }
 }
 
-/// Run one command line, print an error as `error: <code>: <message>` on `err` and return the
-/// process exit status.
+/// Run one command line for the provider, print an error as `error: <code>: <message>`
+/// on `err` and return the process exit status.
 pub fn run_cli(args: &[String], io: &mut Io<'_>, err: &mut dyn Write) -> i32 {
-    match execute(args, io) {
+    run_cli_with(&stages::provider(), args, io, err)
+}
+
+/// [`run_cli`] for `provider`.
+pub fn run_cli_with(
+    provider: &Provider,
+    args: &[String],
+    io: &mut Io<'_>,
+    err: &mut dyn Write,
+) -> i32 {
+    match execute_with(provider, args, io) {
         Ok(()) => 0,
         Err(e) => {
             // a failing standard error cannot be reported anywhere else

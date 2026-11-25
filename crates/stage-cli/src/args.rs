@@ -51,6 +51,11 @@ pub enum Command {
     },
     /// `apply STAGE ...`.
     Apply(Apply),
+    /// `provider [--program PATH]`.
+    Provider {
+        /// The program the provider file points at, instead of the program name.
+        program: Option<String>,
+    },
 }
 
 /// The request of `apply`, as typed.
@@ -79,13 +84,19 @@ pub struct Apply {
 /// The usage text.
 pub const HELP: &str = "usage: mocha-stage list [--json]
        mocha-stage apply STAGE --width W --height H --depth 8|16|32 --fps N/D [--frames N]
+                         [--param K=V]... [--layer ID=PATH]...
        mocha-stage apply STAGE --describe --width W --height H --depth D --fps N/D [--frames N]
+                         [--param K=V]... [--layer ID=PATH]...
+       mocha-stage provider [--program PATH]
        mocha-stage --version | --help
 
-list prints the stages of this provider (--json: a stage manifest of the handoff convention).
-apply reads raw frames on standard input and writes them on standard output; STAGE is
-selftest-copy, a self test that copies frames unchanged. It takes no --param and no --layer.
---describe answers the geometry of the run as one JSON document and reads no input.
+list prints the stages of this provider (--json: a stage manifest of the handoff convention
+with the parameters and the layers of every stage).
+apply reads raw frames on standard input and writes them on standard output. A parameter is
+--param K=V and an extra input is --layer ID=PATH; the manifest names them per stage.
+--describe answers the output geometry of the run as one JSON document and reads no input.
+provider prints the manifest as a provider file (*.stage.json); --program names the program
+the file points at (default: mocha-stage, found on PATH).
 errors: one line `error: <code>: <message>` on standard error; exit 2 usage, 3 unsupported,
 4 bad input (also a stream that ends inside a frame), 1 any other failure.
 ";
@@ -158,10 +169,38 @@ pub fn parse(args: &[String]) -> Result<Command, StageError> {
             Ok(Command::List { json })
         }
         "apply" => parse_apply(&args[1..]).map(Command::Apply),
+        "provider" => parse_provider(&args[1..]),
         other => Err(StageError::usage(format!(
             "unknown command `{other}`: use list or apply (see --help)"
         ))),
     }
+}
+
+fn parse_provider(args: &[String]) -> Result<Command, StageError> {
+    let mut program: Option<String> = None;
+    let mut i = 0;
+    while i < args.len() {
+        let arg = &args[i];
+        i += 1;
+        let value = if arg == "--program" {
+            let v = args
+                .get(i)
+                .ok_or_else(|| StageError::usage("--program needs a value"))?;
+            i += 1;
+            v.clone()
+        } else if let Some(v) = arg.strip_prefix("--program=") {
+            v.to_string()
+        } else {
+            return Err(StageError::usage(format!("provider does not take `{arg}`")));
+        };
+        if value.is_empty() {
+            return Err(StageError::usage("--program needs a value"));
+        }
+        if program.replace(value).is_some() {
+            return Err(StageError::usage("--program given twice"));
+        }
+    }
+    Ok(Command::Provider { program })
 }
 
 fn parse_apply(args: &[String]) -> Result<Apply, StageError> {
@@ -427,5 +466,44 @@ mod tests {
         usage("list --all");
         usage("--help list");
         usage("--version x");
+    }
+}
+
+#[cfg(test)]
+mod provider_tests {
+    use super::*;
+    use crate::error::Code;
+
+    fn v(s: &str) -> Vec<String> {
+        s.split_whitespace().map(String::from).collect()
+    }
+
+    #[test]
+    fn provider_forms() {
+        assert_eq!(
+            parse(&v("provider")).unwrap(),
+            Command::Provider { program: None }
+        );
+        for form in ["provider --program bin/tool", "provider --program=bin/tool"] {
+            assert_eq!(
+                parse(&v(form)).unwrap(),
+                Command::Provider {
+                    program: Some("bin/tool".to_string())
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn provider_refusals_are_usage() {
+        for form in [
+            "provider --json",
+            "provider extra",
+            "provider --program",
+            "provider --program=",
+            "provider --program a --program b",
+        ] {
+            assert_eq!(parse(&v(form)).unwrap_err().code, Code::Usage, "{form}");
+        }
     }
 }

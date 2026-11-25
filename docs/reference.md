@@ -2,7 +2,7 @@
 
 This page documents everything the repository holds: the crates with their file formats, the pairing and the predictor command, the build, the documentation tools and the tests. It lives apart so that the README stays short. The [README](../README.md) covers what the project is and its parity status, and [parity](parity.md) covers the measurement.
 
-The repository holds nineteen Rust crates: `crates/effect-params`, which defines parameter kinds and flags, reads and writes a table of parameter definitions, and pairs a predicted table with an observed one; `crates/effect-shell`, the host side shell of an effect plug-in, with its entry point, a command dispatch, the registration of a parameter table given at build time and this project's own definitions of the host's structures; `crates/shape-model`, the rewrite's model of shape data; `crates/shape-canon`, which writes the model's state as a canonical text dump, reads a case in a plain text form, and builds the command `shape-predict`; `crates/mask-seq`, which defines `mask-1`, the repository's own container form for a sequence of one-channel mask frames, writes and checks such a sequence, and builds the command `mask-validate`; `crates/frame-io`, which reads and writes the raw frame streams of the handoff convention, generates synthetic frames, compares two streams as bit patterns, and builds the commands `frame-gen` and `frame-cmp`; `crates/stage-cli`, which builds `mocha-stage`, a stage program in that convention with one self test stage; seven generic libraries, `crates/pixel-format` (sample depth conversion and alpha premultiplication), `crates/contour-eval` (Bezier and X-spline contours), `crates/coverage-raster` (polygon coverage), `crates/planar-xform` (a 3 by 3 projective transform), `crates/resample` (image resampling), `crates/lens-model` (lens distortion maps) and `crates/soft-edge` (blurs and a feathered ramp over the distance to an edge), each with every choice it could make held as explicit configuration; and five further generic libraries, each with an explicit configuration: `crates/sphere-reorient`, which maps the coordinates of equirectangular, cube map and stereo layout images through a rotation; `crates/mesh-warp`, which warps coordinates by a triangle mesh or a bilinear quad; `crates/blend-ops`, which composites RGBA pixels by the Porter and Duff operators and the blend modes of the W3C; `crates/key-eval`, which evaluates values given by keys at a time; `crates/planar-track`, which tracks a planar region through a sequence of grey level images by direct image alignment. Beside them are three Python tools, `tools/status.py`, `tools/gen_docs.py` and `tools/check_docs.py`, which compute the status of result files, write the generated figures of the documentation and check the pages, each with a test file beside it; the convention's `contracts/` folder, held as twixtor publishes it; the documentation in `docs/`, with the result file schema in `docs/data/result_schema.json`; and the CI workflow, `.github/workflows/ci.yml`.
+The repository holds nineteen Rust crates: `crates/effect-params`, which defines parameter kinds and flags, reads and writes a table of parameter definitions, and pairs a predicted table with an observed one; `crates/effect-shell`, the host side shell of an effect plug-in, with its entry point, a command dispatch, the registration of a parameter table given at build time and this project's own definitions of the host's structures; `crates/shape-model`, the rewrite's model of shape data; `crates/shape-canon`, which writes the model's state as a canonical text dump, reads a case in a plain text form, and builds the command `shape-predict`; `crates/mask-seq`, which defines `mask-1`, the repository's own container form for a sequence of one-channel mask frames, writes and checks such a sequence, and builds the command `mask-validate`; `crates/frame-io`, which reads and writes the raw frame streams of the handoff convention, generates synthetic frames, compares two streams as bit patterns, and builds the commands `frame-gen` and `frame-cmp`; `crates/stage-cli`, which builds `mocha-stage`, a stage program in that convention with a self test stage and thirteen generic stages over the generic crates; seven generic libraries, `crates/pixel-format` (sample depth conversion and alpha premultiplication), `crates/contour-eval` (Bezier and X-spline contours), `crates/coverage-raster` (polygon coverage), `crates/planar-xform` (a 3 by 3 projective transform), `crates/resample` (image resampling), `crates/lens-model` (lens distortion maps) and `crates/soft-edge` (blurs and a feathered ramp over the distance to an edge), each with every choice it could make held as explicit configuration; and five further generic libraries, each with an explicit configuration: `crates/sphere-reorient`, which maps the coordinates of equirectangular, cube map and stereo layout images through a rotation; `crates/mesh-warp`, which warps coordinates by a triangle mesh or a bilinear quad; `crates/blend-ops`, which composites RGBA pixels by the Porter and Duff operators and the blend modes of the W3C; `crates/key-eval`, which evaluates values given by keys at a time; `crates/planar-track`, which tracks a planar region through a sequence of grey level images by direct image alignment. Beside them are three Python tools, `tools/status.py`, `tools/gen_docs.py` and `tools/check_docs.py`, which compute the status of result files, write the generated figures of the documentation and check the pages, each with a test file beside it; the convention's `contracts/` folder, held as twixtor publishes it; the documentation in `docs/`, with the result file schema in `docs/data/result_schema.json`; and the CI workflow, `.github/workflows/ci.yml`.
 
 ## Contents
 
@@ -21,6 +21,30 @@ The repository holds nineteen Rust crates: `crates/effect-params`, which defines
   - [The frame contract](#the-frame-contract)
   - [`frame-gen` and `frame-cmp`](#frame-gen-and-frame-cmp)
   - [`mocha-stage`](#mocha-stage)
+    - [The manifest](#the-manifest)
+    - [Parameters on the command line](#parameters-on-the-command-line)
+    - [Layer files](#layer-files)
+    - [The order of the checks](#the-order-of-the-checks)
+    - [The exit codes of `mocha-stage`](#the-exit-codes-of-mocha-stage)
+    - [Samples and frames](#samples-and-frames)
+    - [The provider file](#the-provider-file)
+    - [Conformance](#conformance)
+    - [The stages](#the-stages)
+    - [The sampler parameters](#the-sampler-parameters)
+    - [`selftest-copy`](#selftest-copy)
+    - [`resample-scale`](#resample-scale)
+    - [`depth-quantise`](#depth-quantise)
+    - [`alpha-premultiply`](#alpha-premultiply)
+    - [`soft-edge-blur`](#soft-edge-blur)
+    - [`soft-edge-feather`](#soft-edge-feather)
+    - [`warp-planar`](#warp-planar)
+    - [`warp-four-point`](#warp-four-point)
+    - [`warp-lens`](#warp-lens)
+    - [`warp-sphere`](#warp-sphere)
+    - [`warp-mesh`](#warp-mesh)
+    - [`raster-polygon`](#raster-polygon)
+    - [`raster-contour`](#raster-contour)
+    - [`track-planar`](#track-planar)
   - [The generic crates](#the-generic-crates)
     - [`pixel-format`](#pixel-format)
     - [`contour-eval`](#contour-eval)
@@ -59,15 +83,17 @@ For scripts: ask the tool or the file, not the prose.
 | The dump form | the module comment of `crates/shape-canon/src/lib.rs` and `render_dump`; the test `predict_exact_bytes` holds one whole dump |
 | How a program runs `shape-predict`: its arguments, streams and exit codes | `docs/data/shape_predict_interface.json`, whose exit code rows `crates/shape-canon/tests/interface_contract.rs` checks against the built binary; `crates/shape-canon/src/main.rs` is right wherever the file disagrees with it |
 | The mask sequence form: the frame files and the manifest | the module comments of `crates/mask-seq/src/pgm.rs` and `crates/mask-seq/src/manifest.rs`; `Frame::from_pgm` and `Manifest::parse` are right wherever this page disagrees with them |
+| The stages of `mocha-stage`: ids, kinds, geometry, depths, parameters and layers | `mocha-stage list --json`, or the provider file `crates/stage-cli/providers/mocha_pro.stage.json`, which a test holds equal to `mocha-stage provider`; the `StageDef` of each module under `crates/stage-cli/src/stages/` is right wherever this page disagrees with them |
+| How a program runs one stage: its arguments, streams, exit codes and the scenarios that pin them | `docs/data/stage_<id with underscores>_interface.json`, whose rows the tests `tests/interface_<id>.rs` and `tests/stage_raster_interface.rs` of `crates/stage-cli` run against the built binary |
 | How a program runs `mask-validate`: its argument, streams, exit codes and reason words | `docs/data/mask_validate_interface.json`, whose exit code rows and reason words `crates/mask-seq/tests/interface_contract.rs` checks against the built binary and the library; `crates/mask-seq/src/main.rs` and `crates/mask-seq/src/validate.rs` are right wherever the file disagrees with them |
 
 ## The crates
 
-`crates/effect-params` holds the types the rewrite uses to describe the parameters of an effect and the comparison that pairs its prediction of a parameter table with the table the original registers. `crates/effect-shell` is the host side of an effect plug-in: it registers a parameter table with the host and hands the other commands to handlers that another crate supplies, and it computes nothing of the plug-in. `crates/shape-model` and `crates/shape-canon` are the rewrite's side of the [shape data check](parity.md#the-shape-data-check): the first holds the model of a shape over time, the second turns a case into the text the rewrite predicts for it. `crates/mask-seq` is not part of a check: it defines a container form of the repository's own for a sequence of mask frames, and it stores and checks frames that it is given. `crates/frame-io` and `crates/stage-cli` are the repository's side of the [handoff convention](handoff.md): the first holds the frame contract with a generator and a comparer, the second a stage program with one self test stage, and neither computes anything of the plug-in. The seven generic crates, `crates/pixel-format`, `crates/contour-eval`, `crates/coverage-raster`, `crates/planar-xform`, `crates/resample`, `crates/lens-model` and `crates/soft-edge`, hold conversions, curves, rasterising, geometry, resampling, lens maps and edge operators that are written from published sources, with each choice that the sources leave open as a field of a configuration value; they compute nothing of the plug-in until a configuration has been selected by comparison with the original. `crates/sphere-reorient`, `crates/mesh-warp`, `crates/blend-ops`, `crates/key-eval` and `crates/planar-track` are five further generic crates: each computes from published methods, with every choice those methods leave open made a field of an explicit configuration, and none computes anything of the plug-in until a configuration has been selected by comparison with the original. None of the nineteen has a dependency outside the workspace, none but `effect-shell` has `unsafe` code, which it uses at the host interface and in its freestanding build, none holds a name, a value or a text of the original, and every name and value in their tests is invented, apart from six published NIST test vectors in the SHA-256 tests of `mask-seq` and the sizes, offsets and constants of the host's interface that the tests of `effect-shell` pin.
+`crates/effect-params` holds the types the rewrite uses to describe the parameters of an effect and the comparison that pairs its prediction of a parameter table with the table the original registers. `crates/effect-shell` is the host side of an effect plug-in: it registers a parameter table with the host and hands the other commands to handlers that another crate supplies, and it computes nothing of the plug-in. `crates/shape-model` and `crates/shape-canon` are the rewrite's side of the [shape data check](parity.md#the-shape-data-check): the first holds the model of a shape over time, the second turns a case into the text the rewrite predicts for it. `crates/mask-seq` is not part of a check: it defines a container form of the repository's own for a sequence of mask frames, and it stores and checks frames that it is given. `crates/frame-io` and `crates/stage-cli` are the repository's side of the [handoff convention](handoff.md): the first holds the frame contract with a generator and a comparer, the second a stage program with a self test stage and thirteen generic stages, each of which runs a generic crate below on frames, and neither computes anything of the plug-in. The seven generic crates, `crates/pixel-format`, `crates/contour-eval`, `crates/coverage-raster`, `crates/planar-xform`, `crates/resample`, `crates/lens-model` and `crates/soft-edge`, hold conversions, curves, rasterising, geometry, resampling, lens maps and edge operators that are written from published sources, with each choice that the sources leave open as a field of a configuration value; they compute nothing of the plug-in until a configuration has been selected by comparison with the original. `crates/sphere-reorient`, `crates/mesh-warp`, `crates/blend-ops`, `crates/key-eval` and `crates/planar-track` are five further generic crates: each computes from published methods, with every choice those methods leave open made a field of an explicit configuration, and none computes anything of the plug-in until a configuration has been selected by comparison with the original. None of the nineteen has a dependency outside the workspace, none but `effect-shell` has `unsafe` code, which it uses at the host interface and in its freestanding build, none holds a name, a value or a text of the original, and every name and value in their tests is invented, apart from six published NIST test vectors in the SHA-256 tests of `mask-seq` and the sizes, offsets and constants of the host's interface that the tests of `effect-shell` pin.
 
 ### Crate map
 
-Workspace members of `Cargo.toml`: nineteen, version 0.1.0, edition 2021, unpublished. External crates: none; `effect-shell` depends on `effect-params`, `shape-canon` on `shape-model` and `pixel-format` on `frame-io`, each by its path in the workspace.
+Workspace members of `Cargo.toml`: nineteen, version 0.1.0, edition 2021, unpublished. External crates: none; `effect-shell` depends on `effect-params`, `shape-canon` on `shape-model`, `pixel-format` on `frame-io`, and `stage-cli` on the ten crates its stages run (`contour-eval`, `coverage-raster`, `lens-model`, `mesh-warp`, `pixel-format`, `planar-track`, `planar-xform`, `resample`, `soft-edge` and `sphere-reorient`), each by its path in the workspace.
 
 | Member | Builds | Owns | Key modules (`src/`) | Tests |
 |---|---|---|---|---|
@@ -77,7 +103,7 @@ Workspace members of `Cargo.toml`: nineteen, version 0.1.0, edition 2021, unpubl
 | `crates/shape-canon` | library `shape_canon`, binary `shape-predict` | The canonical dump text, the hexadecimal float text, the case form and the predictor | `lib.rs` (`DumpWriter`, `render_dump`, `predict`, `UNKNOWN`), `hexfloat.rs` (`fmt_hex`, `parse_hex`), `case.rs` (`Case`, `Meta`, `CaseError`), `main.rs` (`shape-predict`) | `tests/canon.rs`, `tests/cli.rs`, `tests/interface_contract.rs`, `tests/model_hypotheses.rs` |
 | `crates/mask-seq` | library `mask_seq`, binary `mask-validate` | The `mask-1` sequence form: SHA-256, the canonical frame file, the manifest, and writing a sequence folder and checking one | `sha256.rs` (`Sha256`, `digest`, `to_hex`, `from_hex`, `K`, `H0`), `pgm.rs` (`Depth`, `Frame`, `Header`, `parse_header`, `FrameError`, `PgmError`), `manifest.rs` (`Manifest`, `ManifestError`, `ManifestErrorKind`, `frame_name`, `FORMAT`, `MANIFEST_NAME`, `NAMING`), `validate.rs` (`validate`, `write_sequence`, `Outcome`, `Reason`, `Invalid`, `Summary`, `SequenceError`), `lib.rs` (the re-exports), `main.rs` (`mask-validate`) | `tests/cli.rs`, `tests/interface_contract.rs`, `tests/manifest.rs`, `tests/pgm.rs`, `tests/sha256.rs`, `tests/validate.rs`, with shared helpers in `tests/common/mod.rs` |
 | `crates/frame-io` | library `frame_io`, binaries `frame-gen` and `frame-cmp` | The raw frame contract, the synthetic frame generator and the comparer of two streams | `geometry.rs` (`Depth`, `Geometry`, `Rate`, `MAX_FRAME_BYTES`), `io.rs` (`FrameReader`, `FrameWriter`), `pattern.rs` (`Pattern`, `SplitMix64`), `compare.rs` (`compare`), `sample.rs`, `error.rs` (`GeometryError`, `FrameError`), `cli.rs`, `bin/frame_gen.rs`, `bin/frame_cmp.rs` | `tests/geometry.rs`, `io.rs`, `pattern.rs`, `sample.rs`, `compare.rs`, `cli.rs`, `interface_contract.rs` |
-| `crates/stage-cli` | library `stage_cli`, binary `mocha-stage` | The stage program of the handoff convention: the manifest, the argument rules, the self test stage and the stage exit codes | `stage.rs` (the manifest and `selftest-copy`), `args.rs`, `run.rs`, `frame.rs`, `error.rs`, `main.rs` | unit tests in the modules, `tests/cli.rs` on the built binary |
+| `crates/stage-cli` | library `stage_cli`, binary `mocha-stage` | The stage program of the handoff convention: the stage registry, the manifest and the provider file, the argument rules, typed parameters and layers, the key file, the self test stage, the thirteen generic stages and the stage exit codes | `registry.rs` (`Stage`, `StageDef`, `Label`, `Provider`, `GENERIC_CLAIM`, the manifest and the describe answer), `stage.rs` (the provider constants), `args.rs`, `params.rs`, `keys.rs` (`keys-1`), `run.rs`, `pixels.rs`, `frame.rs`, `error.rs`, `stages/` (`selftest_copy.rs`; `image/`, `warp/`, `raster/` and `data/` with one module per stage and the shared modules `shared.rs`, `sampler.rs`, `planar.rs`, `mesh_form.rs`, `shape.rs`, `coverage.rs`, `carry.rs` and `sink.rs`), `main.rs` | unit tests in the modules, `tests/cli.rs` and `tests/framework.rs` on the built binary and the registry, `tests/stage_<id>.rs` per stage, `tests/interface_<id>.rs` and `tests/stage_raster_interface.rs` on the interface files, with shared helpers in `tests/image_support/` and `tests/stage_warp_common/` |
 | `crates/pixel-format` | library `pixel_format` | Conversion of one sample between 8 bit, 16 bit and 32 bit float depths, exact integer premultiplication, and the layout of a pixel buffer with a row stride | `mode.rs` (`Depth`, `Rounding`, `Precision`, `Clamp`, `PremulOrder`), `convert.rs` (`int_to_float`, `float_to_int`, `IntToFloat`, `FloatToInt`, `Rescale`), `alpha.rs` (`ZeroAlpha`, `premultiply_int`, `unpremultiply_int`, `premultiply_f32`, `unpremultiply_f32`), `config.rs` (`Config`, `Space`, `AlphaOp`, `ParseError`), `layout.rs` (`Order`, `WorldLayout`, `LayoutError`), `lib.rs` (the re-exports) | `tests/alpha.rs`, `tests/config.rs`, `tests/convert.rs`, `tests/layout.rs` |
 | `crates/contour-eval` | library `contour_eval` | The evaluation of a planar contour of cubic Bezier spans or X-spline segments at a parameter, and its flattening to a polyline | `lib.rs` (`Contour`, `Kind`, `Point`, `Config`, `ContourError`, `eval`, `bezier_split`), `bezier.rs` (the Bezier forms), `xspline.rs` (`f_blend`, `g_blend`, `h_blend`, `xspline_weights`), `flatten.rs` (`flatten`, `Flatten`), `real.rs` (the arithmetic at the two precisions) | `tests/audit_segment.rs`, `tests/bezier.rs`, `tests/config.rs`, `tests/errors.rs`, `tests/flatten.rs`, `tests/vectors.rs`, `tests/xspline.rs`, and unit tests in `src/flatten.rs` |
 | `crates/coverage-raster` | library `coverage_raster` | The coverage of closed polygons in a target rectangle, by exact area or by sample points, with the quantising of the result | `config.rs` (`Config`, `Space`, `Method`, `Pattern`, `FillRule`, `Combine`, `Quantise`, `Polygon`, `Target`), `edges.rs` (the edge list), `exact.rs` (exact area), `sample.rs` (sample points and `pattern_offsets`), `quant.rs` (`Buffer`, `code`), `error.rs` (`Error`), `lib.rs` (`rasterise`, `rasterise_buffer`, `Coverage`) | `tests/audit_regress.rs`, `tests/combine_quant.rs`, `tests/edge_cases.rs`, `tests/exact_area.rs`, `tests/methods.rs`, `tests/reference.rs`, `tests/sampling.rs`, with shared helpers in `tests/common/`, and unit tests in `src/exact.rs` |
@@ -419,27 +445,792 @@ The convention keeps exit code 1 for a stage that failed. `frame-cmp` is not a s
 
 ### `mocha-stage`
 
-`crates/stage-cli` builds `mocha-stage`, a stage program in the handoff convention:
+`crates/stage-cli` builds `mocha-stage`, a stage program in the handoff convention. It holds a self test stage and thirteen generic stages. A generic stage computes a published method under explicit configuration with a crate of this workspace and claims nothing about the plug-in; none reproduces any output of the plug-in.
 
 ```text
 mocha-stage list [--json]
-mocha-stage apply selftest-copy --width W --height H --depth 8|16|32 --fps N[/D] [--frames N]
-mocha-stage apply selftest-copy --width W --height H --depth 8|16|32 --fps N[/D] --describe
+mocha-stage apply STAGE --width W --height H --depth 8|16|32 --fps N[/D] [--frames N] [--param K=V]... [--layer ID=PATH]...
+mocha-stage apply STAGE --describe --width W --height H --depth D --fps N[/D] [--frames N] [--param K=V]... [--layer ID=PATH]...
+mocha-stage provider [--program PATH]
+mocha-stage --version | --help
 ```
 
-`list --json` prints a stage manifest that validates against `contracts/stage-manifest.schema.json`: the provider id `mocha_pro` (the schema's pattern for an id has no hyphen), the crate version, and one stage. That stage, `selftest-copy`, is a frame stage with preserved geometry at depths 8, 16 and 32 and no parameters. `apply` reads raw frames on standard input and writes the same frames to standard output; with `--describe` it prints the geometry answer and reads no input. The stage is a self test of the plumbing. It reimplements nothing of the plug-in, and no stage that does is to be added before its unit has been compared ([parity](parity.md)).
-
-| Exit code | Means |
+| Command | Does |
 |---|---|
-| 0 | all frames were processed, or the list or the description was printed |
-| 1 | the stage failed |
-| 2 | usage, a terminal on standard input or output included |
-| 3 | unsupported: an unknown stage, a depth other than 8, 16 or 32, or any `--param` or `--layer` |
-| 4 | bad input, a partial frame and a closed pipe included |
+| `list --json` | prints the stage manifest, one line of JSON that validates against `contracts/stage-manifest.schema.json` |
+| `list` | prints one stage id per line, in manifest order |
+| `apply STAGE ...` | reads whole raw frames on standard input and writes the frames of the stage on standard output |
+| `apply STAGE --describe ...` | prints the geometry answer of `contracts/describe.schema.json` as one line and reads no input |
+| `provider` | prints the manifest as a provider file (`*.stage.json`); `--program PATH` writes PATH as the command of the file instead of `mocha-stage` |
+| `--version`, `--help` | `mocha-stage 0.1.0`, the version text of the manifest; the usage text |
 
-An error is one line on standard error, `error: <code>: <message>`, with the code words of the convention.
+`--width`, `--height`, `--depth` and `--fps` are required. `--opt=value` is accepted next to `--opt value`. `--frames N` is the expected frame count, and another count read is `bad_input`. `--fps` is `N` or `N/D` with positive whole numbers.
 
-The `contracts/` folder is held byte for byte as twixtor publishes it at commit 8087d06 and is not edited here. The convention's conformance tool is not held here. Run from a twixtor checkout at that commit against the built `mocha-stage` on Linux, with `python -I tools/conformance.py --stage "<path to>/mocha-stage apply selftest-copy" --full` inside the checkout, it runs levels 1 and 3, the two that need neither ffmpeg nor the convention's control tool, and gives level 1: 270 passed, level 3: 33 passed, exit 0. The [handoff](handoff.md) page states which steps of joining the convention this covers.
+#### The manifest
+
+The manifest names the provider `mocha_pro` (the schema's pattern for an id allows no hyphen), the version `mocha-stage 0.1.0`, the command `["mocha-stage"]`, the contract `frames/2`, and fourteen stages in this order: `selftest-copy`, `resample-scale`, `depth-quantise`, `alpha-premultiply`, `soft-edge-blur`, `soft-edge-feather`, `warp-planar`, `warp-four-point`, `warp-lens`, `warp-sphere`, `warp-mesh`, `raster-polygon`, `raster-contour`, `track-planar`. Each entry has the keys of the schema (`id`, `kind`, `spool`, `geometry`, `depths`, `params`, `layers`) and three more that the schema allows: `name`, `description` and `family`.
+
+| Key | Rule here |
+|---|---|
+| `family` | `selftest` for `selftest-copy`, `generic` for every other stage. No stage has the family `unit`: a test of the crate fails when the provider registers a stage that carries the id and the status of a unit. |
+| `description` | one sentence on what the stage computes; for a generic stage it ends with the sentence "A generic stage: a published method under explicit configuration, not compared with any product." (`GENERIC_CLAIM` in `src/registry.rs`), which the registry appends, so no stage module can leave it out |
+| `kind` | `frame` (one frame out per frame in, streamed) for every stage but `track-planar`, which is `temporal`: it reads the frames of the clip in order and writes each once it has been tracked |
+| `spool` | `false` for every stage: no stage needs its piped input copied whole to a file first |
+| `geometry` | `preserve` (the output has the width, height, depth, rate and frame count of the input) or `declared` (`resample-scale` and the five warps: the output width and height come from the parameters and `--describe` answers them) |
+| `depths` | 8, 16 and 32 for every stage. No stage changes the depth: the depth of the output and of the describe answer equals the request |
+| `params[]` | `id`, `name`, `kind` (`int`, `float`, `popup`, `checkbox` or `text`), `default`, `keyed`, `description`, and `min` and `max` for `int` and `float` or `choices` for `popup`. No parameter is required: each has its default |
+| `layers[]` | `id`, `optional`, `form` and `description`. Every layer is optional, and an absent layer is the neutral input of the operation ([Layer files](#layer-files)) |
+
+#### Parameters on the command line
+
+A parameter is `--param K=V`, at most once per id. The value is read by the kind of the parameter:
+
+| Kind | Accepts |
+|---|---|
+| `int` | ASCII digits with an optional leading `-`, inside `min` to `max` |
+| `float` | a finite decimal: digits with an optional leading `-`, an optional fraction and an optional exponent, inside `min` to `max`; `inf`, `nan` and a leading `+` are refused |
+| `popup` | one of `choices`, as written |
+| `checkbox` | `1`, `true` or `on`, and `0`, `false` or `off` |
+| `text` | any text |
+
+An id given twice is `usage` (exit 2). An unknown id, a value that does not parse, a value outside its range and a word that is not one of the choices are `unsupported` (exit 3). A value that holds `@` is the keyed form of the convention's command line, and every stage here refuses it as `unsupported`: a value that changes per frame comes from a key file instead ([Layer files](#layer-files)).
+
+#### Layer files
+
+A layer is `--layer ID=PATH`, at most once per id; a layer given twice or with an empty path is `usage` (exit 2), and a layer the stage does not have is `unsupported` (exit 3). A stage opens its layer files before the first frame. A file that cannot be read or does not follow its form is `bad_input` (exit 4). `--describe` opens no layer file.
+
+| Form | Layer id | Read by | Holds | Without the layer |
+|---|---|---|---|---|
+| `keys-1` | `keys` | `resample-scale`, `soft-edge-blur`, `soft-edge-feather`, `warp-planar`, `warp-four-point`, `warp-lens`, `warp-sphere`, `raster-polygon`, `raster-contour` | values of keyed parameters per frame (`src/keys.rs`) | every keyed parameter keeps its command line value |
+| `rings-1` | `shape` | `raster-polygon` | polygons as rings of points (`src/stages/raster/shape.rs`) | no polygon: the coverage is 0 everywhere |
+| `contours-1` | `shape` | `raster-contour` | polygons as Bezier or X-spline contours of control points (`src/stages/raster/shape.rs`) | no contour: the coverage is 0 everywhere |
+| `mesh-1` | `mesh` | `warp-mesh` | one triangle mesh with a source and an output position per vertex (`src/stages/warp/mesh_form.rs`) | the identity mesh: every position maps to itself |
+
+Every form is UTF-8 text with one record per line and words separated by spaces or tabs. Empty lines are skipped, and so is a line whose first word starts with `#`. The first record is the name of the form.
+
+`keys-1`:
+
+```text
+keys-1
+# a comment
+start 0
+key shift_x 0 0.0 linear
+key shift_x 24 12.5 hold
+key shift_y 0 1.5 linear
+```
+
+- `start T` is the time of the first frame of the stream (default 0). It comes at most once and before the first key. Frame N of the stream is evaluated at time `T + N`.
+- `key PARAM TIME VALUE KIND` is one key: a parameter id, a time in frames (fractions allowed), a value and `hold` or `linear`. The kind governs the segment that starts at the key: `hold` keeps the value until the next key, `linear` moves on the straight line to it.
+- Keys may come in any order. Two keys of one parameter at the same time are an error of the file.
+- Before the first key of a parameter the value is the first key's; from the last key on it is the last key's. A parameter without a key keeps its command line value.
+- A key for a parameter that is not keyed, and a key value outside the range of its parameter, are `unsupported` (exit 3); a value from a key that the stage refuses at a later frame ends the run with exit 3 at that frame.
+- The evaluation is in f64, with add, subtract, multiply and divide only.
+
+`rings-1`, for `raster-polygon`:
+
+```text
+rings-1
+# a square with a square hole
+polygon
+ring
+point 1 1
+point 7 1
+point 7 7
+point 1 7
+ring
+point 3 3
+point 3 5
+point 5 5
+point 5 3
+```
+
+- `polygon` starts a polygon. The rings of one polygon are filled together under the fill rule, so a hole is a ring inside another. Polygons are combined in file order.
+- `ring` starts a ring of the last polygon. A ring is closed: its last point joins its first.
+- `point X Y` adds a point to the last ring. Coordinates are in pixels of the frame; the parameters `centre` and `y_down` of the stage say where a pixel lies in that plane.
+- A polygon holds at least one ring and a ring at least three points. A file without a polygon is valid and covers nothing.
+
+`contours-1`, for `raster-contour`:
+
+```text
+contours-1
+polygon
+contour bezier closed
+point 2 2 0 0 0 0
+point 6 2 0 0 0 0
+point 6 6 0 0 0 0
+contour xspline-basic open
+point 1 1 0
+point 2 5 1
+point 3 1 0
+```
+
+- `polygon` starts a polygon, as in `rings-1`; its contours are filled together.
+- `contour KIND CLOSURE` starts a contour of the last polygon. `KIND` is `bezier`, `xspline-basic` or `xspline-general`; `CLOSURE` is `closed` or `open`. An open contour is filled as the ring of its polyline, so a straight edge joins its last point to its first.
+- `point X Y IN_X IN_Y OUT_X OUT_Y` adds a point to a Bezier contour: the anchor, the incoming tangent handle and the outgoing one. The parameter `tangents` says whether a handle is an offset from its anchor or a position.
+- `point X Y S` adds a point to an X-spline contour: the position and the stored weight. The parameter `weight_map` maps the weight to the shape parameter.
+- A polygon holds at least one contour and a contour at least two points.
+
+In both shape forms every number is a finite decimal of at most 1e9 in absolute value; a file that follows its form and holds a larger number is `unsupported` (exit 3). A shape moves as a whole, through the keyed parameters `offset_x` and `offset_y`; a key per point inside the layer is not offered.
+
+`mesh-1`, for `warp-mesh`:
+
+```text
+mesh-1
+# a comment
+vertex SX SY DX DY
+triangle A B C
+```
+
+- `vertex SX SY DX DY` adds a vertex: its position in the source frame and its position in the output frame, four finite decimal numbers. Vertices are numbered from 0 in the order of the file.
+- `triangle A B C` adds a triangle of three vertex numbers. A vertex may be named before the line that gives it.
+- The unit is the pixel: x grows to the right and y grows down, a frame of w by h pixels spans 0 to w and 0 to h, and pixel i has its centre at i + 0.5.
+- The file holds one mesh, which is used for every frame. A file without a triangle and a triangle that names a vertex the file does not have are errors of the file. Whether triangles of no area and of mixed winding are taken is a choice of the stage (`allow_degenerate`, `winding`).
+
+`track-planar` reads no layer and writes files instead: its text parameter `data` names a `keys-1` file with one pose per frame, the nine matrix entries `m00` to `m22` as linear keys, which is the key form `warp-planar` reads, and `report` names a table with one row per frame. A file is written under a temporary name in the folder of the target and renamed once the input has ended, so a run that fails leaves the target path as it was; a file that cannot be created, written or moved into place is `stage_failed` (exit 1). An empty `data` or `report` writes no file. No value stands for an absent layer: a layer is absent when `--layer` does not name it, and the path `-` names a file like any other path.
+
+#### The order of the checks
+
+`apply` checks the command line in this order, and the first failure decides the exit code: the form of the command line (2); the stage (3); the depth (3); the parameters, one `--param` at a time in command line order (3 for an unknown id or a value that is refused, 2 for an id met a second time); the layers, one `--layer` at a time in the same way (3 for an id the stage does not have, 2 for an id met a second time or an empty path); the size of an input frame, at most 4 GiB (2); the plan of the stage, which gives the output size of a declared stage, at least 1 by 1 and at most 4 GiB a frame, and, for some stages, refuses a configuration of their crate (3). `--describe` answers here and reads nothing; its answer is the request for a `preserve` stage and the computed size for a `declared` one. Without `--describe` a terminal on standard input or output is refused (2), and the stage then opens its layer files (4) and refuses what its crate refuses before the first frame (3), so standard output carries nothing on a failure before the first frame.
+
+#### The exit codes of `mocha-stage`
+
+| Exit | Code word | When |
+|---|---|---|
+| 0 | none | every input frame was processed and written (an empty input is zero frames), or the list, the provider file or the description was printed |
+| 1 | `stage_failed` | a write failed for a reason other than a closed pipe; for `track-planar`, a file it writes could not be created, written or moved into place |
+| 2 | `usage` | a bad or missing option, a parameter or a layer given twice, a layer with an empty path, one path given for both `data` and `report` (`track-planar`), an input frame above 4 GiB, a terminal on standard input or output |
+| 3 | `unsupported` | an unknown stage, a depth the stage does not take, a parameter or a layer the stage does not have, a value the stage refuses (out of range, not a choice, the keyed form, a configuration the crate refuses at plan time), an output frame that is empty or above 4 GiB, a value from a key that the crate refuses at a later frame (the run ends with 3 at that frame) |
+| 4 | `bad_input`, `partial_frame`, `broken_pipe` | a failed read, a frame count other than `--frames`, input that ends inside a frame (the whole frames before it stay written), a layer file that cannot be read or does not follow its form, a reader that went away |
+
+An error is one line on standard error, `error: <code>: <message>`, with the code words of the convention; control characters in the message become spaces so that it stays one line. The rows of each stage are in its interface file, `docs/data/stage_<id with underscores>_interface.json`, and a test of the crate runs the built program for each row of every file: `tests/interface_<id>.rs` for the image and warp stages and `track-planar`, `tests/stage_raster_interface.rs` for the two raster stages. `selftest-copy` has no interface file; `tests/cli.rs` holds its rows.
+
+#### Samples and frames
+
+The stages read and write the frame contract ([The frame contract](#the-frame-contract)). A stage that computes on floats reads an integer sample v as v / 255 or v / 65535, computed in f64 and rounded once to f32, and writes a sample x back as floor(clamp(x, 0, 1) * max + 0.5), with a sample that is not a number written as 0; depth 32 samples are the stream's own floats and are never clamped (`src/pixels.rs`). `depth-quantise` and `alpha-premultiply` work on the bit patterns of the samples through the conversion of `pixel-format` instead. Each stage states its rule in the row "Samples" below. A frame stage writes one frame per frame read; `track-planar` is temporal and writes each frame once it has been tracked, and frames before its reference frame wait in memory until that frame has been read. No stage changes the frame count.
+
+`alpha-premultiply` with `op=premultiply` writes premultiplied colour, which is outside the straight alpha of the frame contract until a later stage divides by alpha again.
+
+#### The provider file
+
+`crates/stage-cli/providers/mocha_pro.stage.json` is the output of `mocha-stage provider`: the manifest for a program named `mocha-stage` on `PATH`. The test `the_shipped_provider_file_is_what_the_program_prints` fails when the registry and the file differ, and its message names the command that writes the file again. `mocha-stage provider --program PATH` prints the same manifest with PATH as its command, for a program that is not on `PATH`; the convention reads a relative program path as relative to the folder of the file.
+
+A peer of the convention finds the stages in one of the ways it defines for a provider without a registry entry:
+
+| Way | Form |
+|---|---|
+| `--provider FILE` | `handoff.py stages --provider crates/stage-cli/providers/mocha_pro.stage.json`, with `mocha-stage` on `PATH` |
+| `HANDOFF_PROVIDERS` | the folder `crates/stage-cli/providers`, with `mocha-stage` on `PATH`, or a folder that holds the output of `mocha-stage provider --program /absolute/path/to/mocha-stage` saved as `mocha_pro.stage.json` |
+| a ready stage command | `mocha-stage apply STAGE` with the placeholders `{width}`, `{height}`, `{depth}` and `{fps}` of the convention, passed to a wrapper as `--stage`, `--pre-stage` or `--post-stage` |
+
+The registry `contracts/tool.json` holds no entry for this repository; the convention lets a tool that only provides stages skip it.
+
+#### Conformance
+
+The `contracts/` folder is held byte for byte as twixtor publishes it at commit 8087d06 and is not edited here. The convention's conformance tool is not held here. Run from a twixtor checkout at that commit against the built `mocha-stage` on Linux, with `python -I tools/conformance.py --stage "<path to>/mocha-stage apply STAGE" --full` inside the checkout, it runs levels 1 and 3, the two that need neither ffmpeg nor the convention's control tool, and gives level 1: 270 passed, level 3: 33 passed, exit 0, for each of the fourteen stages at its defaults. It gives the same for each generic stage with parameters that make it compute at the same size, for the two raster stages with a shape file and for `warp-mesh` with a mesh file. With `--stage` the tool checks that a stage keeps the byte count of its input and gives the same bytes twice, and it does not judge what a stage computes: a declared stage is run at parameters that keep the size, and what each stage computes, at other sizes too, is held by `tests/stage_<id>.rs` and the interface rows. The [handoff](handoff.md) page states which steps of joining the convention this covers.
+
+#### The stages
+
+Each stage below lists its manifest entry, its parameters, its layers, and its exit codes with the rows of its interface file that pin them. The tables are the manifest and the interface files written out; the files are right wherever this page disagrees with them.
+
+#### The sampler parameters
+
+`resample-scale` and the five warps (`warp-planar`, `warp-four-point`, `warp-lens`, `warp-sphere`, `warp-mesh`) begin with the same fourteen parameters, the configuration of the `resample` crate and the output size. They are equal in the six manifest entries:
+
+| Parameter | Kind | Default | Accepts | Keyed | Meaning |
+|---|---|---|---|---|---|
+| `width` | int | `0` | 0 to 65536 | no | Output width in pixels; 0 keeps the input width. |
+| `height` | int | `0` | 0 to 65536 | no | Output height in pixels; 0 keeps the input height. |
+| `filter` | popup | `bilinear` | `nearest`, `bilinear`, `keys`, `mitchell`, `lanczos`, `box` | no | The reconstruction filter (Config::filter). |
+| `keys_a` | float | `-0.5` | -1 to 0 | no | The parameter a of the Keys cubic; read when filter is keys. |
+| `mitchell_b` | float | `0.3333333333333333` | 0 to 1 | no | The parameter B of the Mitchell and Netravali cubic; read when filter is mitchell. |
+| `mitchell_c` | float | `0.3333333333333333` | 0 to 1 | no | The parameter C of the Mitchell and Netravali cubic; read when filter is mitchell. |
+| `lobes` | int | `3` | 1 to 8 | no | The lobes per side of the Lanczos filter; read when filter is lanczos. |
+| `border` | popup | `clamp` | `zero`, `clamp`, `repeat`, `mirror`, `mirror-no-edge` | no | What a tap outside the image reads (Config::border). |
+| `center` | popup | `half` | `half`, `corner` | no | Whether pixel i has its centre at i + 0.5 or at i (Config::center). |
+| `alpha` | popup | `straight` | `straight`, `premultiplied` | no | Whether colour is interpolated as it is or multiplied by alpha first and divided afterwards (Config::alpha). |
+| `normalize` | popup | `none` | `none`, `sum`, `sum-in-bounds` | no | Whether the result is divided by the sum of the tap weights (Config::normalize). |
+| `tie` | popup | `half-up` | `half-up`, `half-down`, `half-even` | no | Where the nearest filter goes when the coordinate is halfway between two pixels (Config::tie). |
+| `order` | popup | `row-major` | `row-major`, `column-major` | no | The order of the accumulation loop, which matters for rounding only (Config::order). |
+| `footprint` | popup | `unit` | `unit`, `jacobian` | no | The size of the box filter in source pixels: one pixel, or the mapped output pixel (Config::footprint). |
+
+#### `selftest-copy`
+
+Self test copy. A self test that copies frames unchanged and reimplements nothing.
+
+| Item | Rule |
+|---|---|
+| Family, kind | `selftest`, `frame`, spool `false` |
+| Command | `mocha-stage apply selftest-copy --width W --height H --depth 8\|16\|32 --fps N[/D] [--frames N] [--describe]` |
+| Geometry | preserve: the output has the width, height, depth, rate and frame count of the input; --describe answers the request |
+| Samples | none are computed: the bytes of each frame are written as they were read |
+| Layers | none; any `--layer` is unsupported (exit 3) |
+
+Parameters: none; any `--param` is unsupported (exit 3).
+
+Exit codes: those of the [table above](#the-exit-codes-of-mocha-stage); `tests/cli.rs` runs the built program for each.
+
+#### `resample-scale`
+
+Resample scale. Resamples each frame to a given width and height with a selectable reconstruction filter (nearest, bilinear, Keys cubic, Mitchell and Netravali cubic, Lanczos or box) under an explicit border, pixel centre, alpha and normalisation rule.
+
+| Item | Rule |
+|---|---|
+| Family, kind | `generic`, `frame`, spool `false` |
+| Command | `mocha-stage apply resample-scale --width W --height H --depth 8\|16\|32 --fps N[/D] [--frames N] [--describe] [--param K=V]... [--layer keys=PATH]` |
+| Geometry | declared: the output is width by height, where 0 keeps the input side; the frame count, the depth and the rate are those of the request; --describe answers the output geometry without reading standard input; a keyed parameter never changes the geometry |
+| Samples | computed on f32 samples: an integer sample v is v / 255 or v / 65535, computed in f64 and rounded once to f32; on the way out a sample x is floor(clamp(x, 0, 1) * max + 0.5) and a sample that is not a number is 0; depth 32 samples are the stream's own floats and are never clamped; the source coordinate of output (x, y) is (x * input width / output width + shift_x, y * input height / output height + shift_y) in the pixel centre convention of center |
+| Layer `keys` | form `keys-1`, optional: A key file with a value per frame for shift_x and shift_y. Without it: every keyed parameter keeps its command line value. |
+
+Parameters: the fourteen [sampler parameters](#the-sampler-parameters), then:
+
+| Parameter | Kind | Default | Accepts | Keyed | Meaning |
+|---|---|---|---|---|---|
+| `shift_x` | float | `0` | -65536 to 65536 | yes | Added to the source x coordinate, in source pixels; may be keyed. |
+| `shift_y` | float | `0` | -65536 to 65536 | yes | Added to the source y coordinate, in source pixels; may be keyed. |
+
+Exit codes, as `docs/data/stage_resample_scale_interface.json` states them, with the scenarios its rows pin:
+
+| Exit | Means | Rows of the interface file |
+|---|---|---|
+| 0 | every input frame was processed and written, or --describe printed its answer | `defaults_return_the_input`, `nearest_doubles_the_width`, `describe_declared_size`, `describe_zero_keeps_the_side`, `key_file_moves_shift_x`, `empty_input` |
+| 1 | stage_failed: the output could not be written for a reason other than a closed pipe | none |
+| 2 | usage: a bad or missing option, a parameter or a layer given twice, a layer with an empty path | `usage_unknown_option`, `usage_parameter_twice`, `usage_missing_fps`, `usage_layer_twice`, `usage_layer_empty_path` |
+| 3 | unsupported: a depth the stage does not take, a parameter or a layer the stage does not have, a value the stage refuses | `unsupported_output_frame_above_4_gib`, `unsupported_depth`, `unsupported_unknown_parameter`, `unsupported_bad_value`, `unsupported_keyed_value_on_the_command_line`, `unsupported_unknown_layer`, `unsupported_key_for_a_parameter_that_is_not_keyed`, `unsupported_key_value_outside_the_range` |
+| 4 | bad_input, partial_frame or broken_pipe: a failed read, input that ends inside a frame, a frame count other than --frames, a layer file that cannot be read or parsed, a reader that went away | `partial_frame`, `bad_input_frame_count`, `bad_input_key_file_missing`, `bad_input_key_file_malformed` |
+
+Not pinned by a row: `stage_failed` (exit 1), a write to standard output that fails for a reason other than a closed pipe; no test makes one, because it needs a device that differs between systems; `broken_pipe` (exit 4), a reader that closes the pipe while the stage writes; the convention's conformance tool exercises it, the rows of this file do not.
+
+#### `depth-quantise`
+
+Depth quantise. Snaps every sample of each frame to the values of an 8 bit or 16 bit integer grid, by a conversion to that depth and back under an explicit rounding, precision and clamp rule; the stream keeps its depth.
+
+| Item | Rule |
+|---|---|
+| Family, kind | `generic`, `frame`, spool `false` |
+| Command | `mocha-stage apply depth-quantise --width W --height H --depth 8\|16\|32 --fps N[/D] [--frames N] [--describe] [--param K=V]...` |
+| Geometry | preserve: the output has the width, height, depth, rate and frame count of the input; --describe answers the geometry of the request |
+| Samples | computed on bit patterns: an 8 or 16 bit sample is its integer, with full scale 255 or 65535, and a depth 32 sample is the bits of its float; the stage itself neither clamps nor rounds, the rules of the parameters do; each sample is converted from the depth of the stream to the grid and back with Config::convert_sample; the grid is 8 bit with full scale 255 or 16 bit with full scale u16_max |
+| Layers | none; any `--layer` is unsupported (exit 3) |
+| Own choices | `u16_max` defaults to 65535, the 16 bit full scale of the frame contract; the default of `pixel_format::Config` is 32768, and the stage takes the scale of the 16 bit samples it reads and writes. |
+
+Parameters:
+
+| Parameter | Kind | Default | Accepts | Keyed | Meaning |
+|---|---|---|---|---|---|
+| `levels` | popup | `8` | `8`, `16` | no | The integer depth of the grid the samples are snapped to. |
+| `u16_max` | int | `65535` | 1 to 65535 | no | The integer that stands for full scale on the 16 bit grid (Config::u16_max); read when levels is 16. |
+| `rounding` | popup | `half-up` | `half-up`, `ties-even`, `truncate`, `floor`, `ceil` | no | How a real number becomes an integer (Config::rounding). |
+| `precision` | popup | `f64` | `f32`, `f64` | no | The floating point type of the arithmetic (Config::precision). |
+| `clamp` | popup | `range-nan-zero` | `none`, `range`, `range-nan-zero` | no | What happens to a rounded value outside the grid or to a value that is not a number (Config::clamp). |
+
+Exit codes, as `docs/data/stage_depth_quantise_interface.json` states them, with the scenarios its rows pin:
+
+| Exit | Means | Rows of the interface file |
+|---|---|---|
+| 0 | every input frame was processed and written, or --describe printed its answer | `eight_bit_stream_on_the_eight_bit_grid`, `grid_of_two_values`, `grid_of_four_values`, `sixteen_bit_stream_on_the_eight_bit_grid`, `grid_of_two_values_floor`, `describe`, `empty_input` |
+| 1 | stage_failed: the output could not be written for a reason other than a closed pipe | none |
+| 2 | usage: a bad or missing option, a parameter or a layer given twice, a layer with an empty path | `usage_unknown_option`, `usage_parameter_twice`, `usage_missing_fps` |
+| 3 | unsupported: a depth the stage does not take, a parameter or a layer the stage does not have, a value the stage refuses | `unsupported_any_layer`, `unsupported_depth`, `unsupported_unknown_parameter`, `unsupported_bad_value`, `unsupported_keyed_value_on_the_command_line`, `unsupported_unknown_layer` |
+| 4 | bad_input, partial_frame or broken_pipe: a failed read, input that ends inside a frame, a frame count other than --frames, a layer file that cannot be read or parsed, a reader that went away | `partial_frame`, `bad_input_frame_count` |
+
+Not pinned by a row: `stage_failed` (exit 1), a write to standard output that fails for a reason other than a closed pipe; no test makes one, because it needs a device that differs between systems; `broken_pipe` (exit 4), a reader that closes the pipe while the stage writes; the convention's conformance tool exercises it, the rows of this file do not.
+
+#### `alpha-premultiply`
+
+Alpha premultiply. Multiplies the colour of each pixel by its alpha, or divides it by its alpha, under an explicit rounding, precision, clamp, zero alpha and order rule. The frame contract carries straight alpha: the output of op=premultiply is premultiplied and outside the contract until a later stage divides by alpha again.
+
+| Item | Rule |
+|---|---|
+| Family, kind | `generic`, `frame`, spool `false` |
+| Command | `mocha-stage apply alpha-premultiply --width W --height H --depth 8\|16\|32 --fps N[/D] [--frames N] [--describe] [--param K=V]...` |
+| Geometry | preserve: the output has the width, height, depth, rate and frame count of the input; --describe answers the geometry of the request |
+| Samples | computed on bit patterns: an 8 or 16 bit sample is its integer, with full scale 255 or 65535, and a depth 32 sample is the bits of its float; the stage itself neither clamps nor rounds, the rules of the parameters do; each pixel is given to Config::convert_pixel with the depth of the stream as the source and the target depth; the alpha sample is never changed by the alpha operation |
+| Layers | none; any `--layer` is unsupported (exit 3) |
+| Own choices | With `op=premultiply` the stage writes premultiplied frames. The frame contract carries straight alpha, so such a stream is outside the contract until a later stage divides by alpha again (`op=unpremultiply`). |
+
+Parameters:
+
+| Parameter | Kind | Default | Accepts | Keyed | Meaning |
+|---|---|---|---|---|---|
+| `op` | popup | `premultiply` | `premultiply`, `unpremultiply` | no | Whether colour is multiplied by alpha or divided by it (AlphaOp). |
+| `rounding` | popup | `half-up` | `half-up`, `ties-even`, `truncate`, `floor`, `ceil` | no | How a real number becomes an integer (Config::rounding). |
+| `precision` | popup | `f64` | `f32`, `f64` | no | The floating point type of the arithmetic (Config::precision). |
+| `clamp` | popup | `range-nan-zero` | `none`, `range`, `range-nan-zero` | no | What happens to a rounded value outside the range or to a value that is not a number (Config::clamp). |
+| `zero_alpha` | popup | `zero-colour` | `zero-colour`, `keep-colour` | no | What a division does where alpha is 0: the colour becomes 0, or stays (Config::zero_alpha). |
+| `order` | popup | `convert-first` | `convert-first`, `alpha-first` | no | Whether the samples are converted before or after the alpha operation (Config::order). |
+
+Exit codes, as `docs/data/stage_alpha_premultiply_interface.json` states them, with the scenarios its rows pin:
+
+| Exit | Means | Rows of the interface file |
+|---|---|---|
+| 0 | every input frame was processed and written, or --describe printed its answer | `premultiply`, `unpremultiply`, `unpremultiply_is_capped`, `unpremultiply_tie_half_up`, `unpremultiply_tie_to_even`, `zero_alpha_zero_colour`, `zero_alpha_keep_colour`, `describe`, `empty_input` |
+| 1 | stage_failed: the output could not be written for a reason other than a closed pipe | none |
+| 2 | usage: a bad or missing option, a parameter or a layer given twice, a layer with an empty path | `usage_unknown_option`, `usage_parameter_twice`, `usage_missing_fps` |
+| 3 | unsupported: a depth the stage does not take, a parameter or a layer the stage does not have, a value the stage refuses | `unsupported_any_layer`, `unsupported_depth`, `unsupported_unknown_parameter`, `unsupported_bad_value`, `unsupported_keyed_value_on_the_command_line`, `unsupported_unknown_layer` |
+| 4 | bad_input, partial_frame or broken_pipe: a failed read, input that ends inside a frame, a frame count other than --frames, a layer file that cannot be read or parsed, a reader that went away | `partial_frame`, `bad_input_frame_count` |
+
+Not pinned by a row: `stage_failed` (exit 1), a write to standard output that fails for a reason other than a closed pipe; no test makes one, because it needs a device that differs between systems; `broken_pipe` (exit 4), a reader that closes the pipe while the stage writes; the convention's conformance tool exercises it, the rows of this file do not.
+
+#### `soft-edge-blur`
+
+Soft edge blur. Blurs the alpha channel, or all four channels, of each frame with a separable box blur, a repeated box blur or a truncated Gaussian blur under an explicit border, fractional radius and kernel rule.
+
+| Item | Rule |
+|---|---|
+| Family, kind | `generic`, `frame`, spool `false` |
+| Command | `mocha-stage apply soft-edge-blur --width W --height H --depth 8\|16\|32 --fps N[/D] [--frames N] [--describe] [--param K=V]... [--layer keys=PATH]` |
+| Geometry | preserve: the output has the width, height, depth, rate and frame count of the input; --describe answers the geometry of the request and refuses values the crate refuses |
+| Samples | computed on f32 samples: an integer sample v is v / 255 or v / 65535, computed in f64 and rounded once to f32; on the way out a sample x is floor(clamp(x, 0, 1) * max + 0.5) and a sample that is not a number is 0; depth 32 samples are the stream's own floats and are never clamped; each chosen channel is blurred as a one channel buffer with box_blur, box_blur_repeated or gaussian_blur; the other channels pass |
+| Layer `keys` | form `keys-1`, optional: A key file with a value per frame for radius. Without it: every keyed parameter keeps its command line value. |
+
+Parameters:
+
+| Parameter | Kind | Default | Accepts | Keyed | Meaning |
+|---|---|---|---|---|---|
+| `channels` | popup | `alpha` | `alpha`, `all` | no | Which channels are blurred: the alpha channel, or all four; the others pass. |
+| `method` | popup | `box` | `box`, `box-repeated`, `gaussian` | no | The blur: one box blur, passes box blurs in a row, or a Gaussian blur. |
+| `radius` | float | `0` | 0 to 4096 | yes | The box radius in samples, or the Gaussian sigma or radius as gauss_spec says; 0 is no blur; may be keyed. |
+| `passes` | int | `3` | 1 to 16 | no | The number of box blurs in a row; read when method is box-repeated. |
+| `gauss_spec` | popup | `sigma` | `sigma`, `radius` | no | Whether radius is the standard deviation of the Gaussian or a radius divided by radius_to_sigma (GaussSpec); read when method is gaussian. |
+| `border` | popup | `clamp` | `zero`, `clamp`, `mirror`, `mirror-no-repeat` | no | What a tap outside the frame reads (Config::border). |
+| `frac_rule` | popup | `end-taps` | `end-taps`, `lerp` | no | How a box radius with a fraction becomes weights (Config::frac_rule). |
+| `trunc_k` | float | `3` | 0 to 64 | no | The Gaussian is cut at this many standard deviations (Config::trunc_k); the Gaussian needs a value above 0. |
+| `exp_method` | popup | `series` | `series`, `recurrence` | no | How the Gaussian weights are evaluated (Config::exp_method). |
+| `exp_terms` | int | `12` | 1 to 64 | no | The number of terms of the exponential series (Config::exp_terms). |
+| `radius_to_sigma` | float | `2` | 0 to 4096 | no | A Gaussian given by radius has sigma = radius / this value (Config::radius_to_sigma); it needs a value above 0. |
+
+Exit codes, as `docs/data/stage_soft_edge_blur_interface.json` states them, with the scenarios its rows pin:
+
+| Exit | Means | Rows of the interface file |
+|---|---|---|
+| 0 | every input frame was processed and written, or --describe printed its answer | `defaults_return_the_input`, `box_of_radius_one`, `box_of_radius_one_zero_border`, `box_of_radius_one_half`, `all_channels`, `key_file_moves_the_radius`, `describe`, `empty_input` |
+| 1 | stage_failed: the output could not be written for a reason other than a closed pipe | none |
+| 2 | usage: a bad or missing option, a parameter or a layer given twice, a layer with an empty path | `usage_unknown_option`, `usage_parameter_twice`, `usage_missing_fps`, `usage_layer_twice`, `usage_layer_empty_path` |
+| 3 | unsupported: a depth the stage does not take, a parameter or a layer the stage does not have, a value the stage refuses | `unsupported_gaussian_without_truncation`, `unsupported_describe_refuses_the_same_values`, `unsupported_keyed_radius_at_a_later_frame`, `unsupported_depth`, `unsupported_unknown_parameter`, `unsupported_bad_value`, `unsupported_keyed_value_on_the_command_line`, `unsupported_unknown_layer`, `unsupported_key_for_a_parameter_that_is_not_keyed`, `unsupported_key_value_outside_the_range` |
+| 4 | bad_input, partial_frame or broken_pipe: a failed read, input that ends inside a frame, a frame count other than --frames, a layer file that cannot be read or parsed, a reader that went away | `partial_frame`, `bad_input_frame_count`, `bad_input_key_file_missing`, `bad_input_key_file_malformed` |
+
+Not pinned by a row: `stage_failed` (exit 1), a write to standard output that fails for a reason other than a closed pipe; no test makes one, because it needs a device that differs between systems; `broken_pipe` (exit 4), a reader that closes the pipe while the stage writes; the convention's conformance tool exercises it, the rows of this file do not.
+
+#### `soft-edge-feather`
+
+Soft edge feather. Replaces the alpha channel of each frame by a linear, smoothstep or cosine ramp over the signed Euclidean distance to the contour where alpha crosses a threshold, inward, outward or centred on the contour; colour passes.
+
+| Item | Rule |
+|---|---|
+| Family, kind | `generic`, `frame`, spool `false` |
+| Command | `mocha-stage apply soft-edge-feather --width W --height H --depth 8\|16\|32 --fps N[/D] [--frames N] [--describe] [--param K=V]... [--layer keys=PATH]` |
+| Geometry | preserve: the output has the width, height, depth, rate and frame count of the input; --describe answers the geometry of the request and refuses a frame of more than 1048574 pixels per side |
+| Samples | computed on f32 samples: an integer sample v is v / 255 or v / 65535, computed in f64 and rounded once to f32; on the way out a sample x is floor(clamp(x, 0, 1) * max + 0.5) and a sample that is not a number is 0; depth 32 samples are the stream's own floats and are never clamped; the alpha channel is given to feather as a one channel buffer and the result is written back as alpha; a frame whose width parameter is 0 is written as it was read |
+| Layer `keys` | form `keys-1`, optional: A key file with a value per frame for width. Without it: every keyed parameter keeps its command line value. |
+| Own choices | At `width=0` the frame is written as it was read: the crate defines the ramp for a width above 0 only. |
+
+Parameters:
+
+| Parameter | Kind | Default | Accepts | Keyed | Meaning |
+|---|---|---|---|---|---|
+| `width` | float | `0` | 0 to 4096 | yes | The width of the ramp in samples of distance; at 0 the frame is written as it was read; may be keyed. |
+| `profile` | popup | `linear` | `linear`, `smoothstep`, `cosine` | no | The shape of the ramp from 0 to 1 (Config::profile). |
+| `direction` | popup | `centred` | `inward`, `outward`, `centred` | no | Which side of the contour the ramp lies on (Config::direction). |
+| `threshold` | float | `0.5` | 0 to 1 | no | A pixel is inside when its alpha is at least this value (Config::threshold). |
+| `edge_offset` | float | `0.5` | -4096 to 4096 | no | The signed distance is the distance between sample centres minus this value (Config::edge_offset). |
+| `border` | popup | `clamp` | `zero`, `clamp`, `mirror`, `mirror-no-repeat` | no | Whether everything beyond the frame is outside (zero) or the frame border is no edge (Config::border). |
+
+Exit codes, as `docs/data/stage_soft_edge_feather_interface.json` states them, with the scenarios its rows pin:
+
+| Exit | Means | Rows of the interface file |
+|---|---|---|
+| 0 | every input frame was processed and written, or --describe printed its answer | `width_zero_writes_the_frame_as_read`, `centred_linear_ramp`, `inward_ramp`, `outward_ramp`, `smoothstep_ramp`, `cosine_ramp`, `zero_border_puts_an_edge_around_the_frame`, `key_file_moves_the_width`, `describe`, `empty_input` |
+| 1 | stage_failed: the output could not be written for a reason other than a closed pipe | none |
+| 2 | usage: a bad or missing option, a parameter or a layer given twice, a layer with an empty path | `usage_unknown_option`, `usage_parameter_twice`, `usage_missing_fps`, `usage_layer_twice`, `usage_layer_empty_path` |
+| 3 | unsupported: a depth the stage does not take, a parameter or a layer the stage does not have, a value the stage refuses | `unsupported_side_above_the_limit`, `unsupported_depth`, `unsupported_unknown_parameter`, `unsupported_bad_value`, `unsupported_keyed_value_on_the_command_line`, `unsupported_unknown_layer`, `unsupported_key_for_a_parameter_that_is_not_keyed`, `unsupported_key_value_outside_the_range` |
+| 4 | bad_input, partial_frame or broken_pipe: a failed read, input that ends inside a frame, a frame count other than --frames, a layer file that cannot be read or parsed, a reader that went away | `partial_frame`, `bad_input_frame_count`, `bad_input_key_file_missing`, `bad_input_key_file_malformed` |
+
+Not pinned by a row: `stage_failed` (exit 1), a write to standard output that fails for a reason other than a closed pipe; no test makes one, because it needs a device that differs between systems; `broken_pipe` (exit 4), a reader that closes the pipe while the stage writes; the convention's conformance tool exercises it, the rows of this file do not.
+
+#### `warp-planar`
+
+Planar warp. Warps each frame by a planar projective transform given as a 3 by 3 matrix (Hartley and Zisserman 2003), sampled with a selectable reconstruction filter under explicit vector, divisor, coordinate and pixel centre rules.
+
+| Item | Rule |
+|---|---|
+| Family, kind | `generic`, `frame`, spool `false` |
+| Command | `mocha-stage apply warp-planar --width W --height H --depth 8\|16\|32 --fps N[/D] [--frames N] [--describe] [--param K=V]... [--layer keys=PATH]` |
+| Geometry | declared: the output is width by height, where 0 keeps the input side; the frame count, the depth and the rate are those of the request; --describe answers the output geometry without reading standard input and without opening a layer; a keyed parameter never changes the geometry |
+| Samples | computed on f32 samples: an integer sample v is v / 255 or v / 65535, computed in f64 and rounded once to f32; on the way out a sample x is floor(clamp(x, 0, 1) * max + 0.5) and a sample that is not a number is 0; depth 32 samples are the stream's own floats and are never clamped; each output pixel is sampled by the resample crate at the source position the map of the stage gives for it, under the filter, border, pixel centre, alpha and normalisation rule of the parameters; a pixel without a source position is zero in all four channels; the map is the matrix m00 to m22 (inverted first when maps is source-to-output) between the pixel or unit coordinates of the output and of the source, applied with the divisor guard |
+| Layer `keys` | form `keys-1`, optional: A key file with a value per frame for the matrix entries m00 to m22. Without it: every keyed parameter keeps its command line value. |
+
+Parameters: the fourteen [sampler parameters](#the-sampler-parameters), then:
+
+| Parameter | Kind | Default | Accepts | Keyed | Meaning |
+|---|---|---|---|---|---|
+| `m00` | float | `1` | -1000000000 to 1000000000 | yes | Row 0, column 0 of the matrix; may be keyed. |
+| `m01` | float | `0` | -1000000000 to 1000000000 | yes | Row 0, column 1 of the matrix; may be keyed. |
+| `m02` | float | `0` | -1000000000 to 1000000000 | yes | Row 0, column 2 of the matrix; may be keyed. |
+| `m10` | float | `0` | -1000000000 to 1000000000 | yes | Row 1, column 0 of the matrix; may be keyed. |
+| `m11` | float | `1` | -1000000000 to 1000000000 | yes | Row 1, column 1 of the matrix; may be keyed. |
+| `m12` | float | `0` | -1000000000 to 1000000000 | yes | Row 1, column 2 of the matrix; may be keyed. |
+| `m20` | float | `0` | -1000000000 to 1000000000 | yes | Row 2, column 0 of the matrix; may be keyed. |
+| `m21` | float | `0` | -1000000000 to 1000000000 | yes | Row 2, column 1 of the matrix; may be keyed. |
+| `m22` | float | `1` | -1000000000 to 1000000000 | yes | Row 2, column 2 of the matrix; may be keyed. |
+| `maps` | popup | `output-to-source` | `output-to-source`, `source-to-output` | no | Which way the matrix goes: from an output position to the source position it reads, or from a source position to where it lands; the second is inverted before use. |
+| `convention` | popup | `column` | `column`, `row` | no | Whether a point is a column vector (p' = M p) or a row vector (p' = p M) (Config::convention). |
+| `guard` | popup | `return-none` | `return-none`, `clamp`, `pass-through` | no | What happens where the homogeneous divisor is not above divisor_min: the pixel is zero, the divisor is replaced by divisor_min, or the numerators are used undivided (Config::guard). |
+| `divisor_min` | float | `0` | -1000000000 to 1000000000 | no | The divisor is valid when it is above this value (Config::divisor_min); with guard clamp it is also the value divided by. |
+| `coords` | popup | `pixel` | `pixel`, `unit` | no | Where the matrix acts: on pixel positions, or on the unit square of each frame. |
+| `xform_center` | popup | `half` | `integer`, `half` | no | Where pixel i has its centre in the pixel coordinates of the matrix: at i, or at i + 0.5 (Config::center). |
+| `y_axis` | popup | `down` | `down`, `up` | no | Whether v of the unit square grows down or up the rows; read when coords is unit (Config::y_axis). |
+| `pixel_aspect` | float | `1` | 0.01 to 100 | no | The width of a pixel over its height; read when coords is pixel (Config::pixel_aspect). |
+| `singular_tolerance` | float | `1e-12` | 0 to 1 | no | The relative pivot tolerance of the four point solve (Config::singular_tolerance). |
+
+Exit codes, as `docs/data/stage_warp_planar_interface.json` states them, with the scenarios its rows pin:
+
+| Exit | Means | Rows of the interface file |
+|---|---|---|
+| 0 | every input frame was processed and written, or --describe printed its answer | `defaults_return_the_input`, `shift_by_one_pixel`, `shift_by_one_pixel_clamp_border`, `source_to_output_shift`, `mirror_matrix`, `half_pixel_shift_is_a_mean`, `row_convention`, `unit_coordinates_on_a_larger_canvas`, `pixel_coordinates_on_a_larger_canvas`, `integer_pixel_centres`, `pixel_aspect`, `guard_return_none`, `guard_pass_through`, `guard_clamp`, `key_file_moves_the_matrix`, `describe_does_not_judge_the_matrix`, `empty_input`, `describe_declared_size`, `describe_zero_keeps_the_side` |
+| 1 | stage_failed: the output could not be written for a reason other than a closed pipe | none |
+| 2 | usage: a bad or missing option, a parameter or a layer given twice, a layer with an empty path | `usage_unknown_option`, `usage_parameter_twice`, `usage_missing_fps`, `usage_layer_twice`, `usage_layer_empty_path` |
+| 3 | unsupported: a depth the stage does not take, a parameter or a layer the stage does not have, a value the stage refuses, a transform or a layer content the configuration refuses | `unsupported_singular_matrix`, `unsupported_singular_matrix_on_an_empty_input`, `unsupported_singular_matrix_from_a_key_file`, `unsupported_depth`, `unsupported_unknown_parameter`, `unsupported_bad_value`, `unsupported_keyed_value_on_the_command_line`, `unsupported_unknown_layer`, `unsupported_output_frame_above_4_gib`, `unsupported_key_for_a_parameter_that_is_not_keyed`, `unsupported_key_value_outside_the_range` |
+| 4 | bad_input, partial_frame or broken_pipe: a failed read, input that ends inside a frame, a frame count other than --frames, a layer file that cannot be read or parsed, a reader that went away | `partial_frame`, `bad_input_frame_count`, `bad_input_key_file_missing`, `bad_input_key_file_malformed` |
+
+Not pinned by a row: `stage_failed` (exit 1), a write to standard output that fails for a reason other than a closed pipe; no test makes one, because it needs a device that differs between systems; `broken_pipe` (exit 4), a reader that closes the pipe while the stage writes; tests/stage_<id>.rs and the convention's conformance tool exercise it, the rows of this file do not.
+
+#### `warp-four-point`
+
+Four point warp. Warps each frame by the planar projective transform that takes the four corners of a frame to four given points, solved by the direct linear transformation (Hartley and Zisserman 2003) and sampled with a selectable reconstruction filter.
+
+| Item | Rule |
+|---|---|
+| Family, kind | `generic`, `frame`, spool `false` |
+| Command | `mocha-stage apply warp-four-point --width W --height H --depth 8\|16\|32 --fps N[/D] [--frames N] [--describe] [--param K=V]... [--layer keys=PATH]` |
+| Geometry | declared: the output is width by height, where 0 keeps the input side; the frame count, the depth and the rate are those of the request; --describe answers the output geometry without reading standard input and without opening a layer; a keyed parameter never changes the geometry |
+| Samples | computed on f32 samples: an integer sample v is v / 255 or v / 65535, computed in f64 and rounded once to f32; on the way out a sample x is floor(clamp(x, 0, 1) * max + 0.5) and a sample that is not a number is 0; depth 32 samples are the stream's own floats and are never clamped; each output pixel is sampled by the resample crate at the source position the map of the stage gives for it, under the filter, border, pixel centre, alpha and normalisation rule of the parameters; a pixel without a source position is zero in all four channels; the map is the transform solved from the four corners of the frame that maps names and the points (x0, y0) to (x3, y3), in unit or pixel coordinates, inverted first when maps is source-to-output |
+| Layer `keys` | form `keys-1`, optional: A key file with a value per frame for the corner coordinates x0, y0 to x3, y3. Without it: every keyed parameter keeps its command line value. |
+| Own choices | The four points default to the corners of the unit square with `coords=unit`, so that the stage at its defaults returns the input at any frame size: a default corner in pixels would depend on the size of the frame. |
+
+Parameters: the fourteen [sampler parameters](#the-sampler-parameters), then:
+
+| Parameter | Kind | Default | Accepts | Keyed | Meaning |
+|---|---|---|---|---|---|
+| `x0` | float | `0` | -1000000000 to 1000000000 | yes | The x coordinate paired with the corner at the first pixel of the first row; may be keyed. |
+| `y0` | float | `0` | -1000000000 to 1000000000 | yes | The y coordinate paired with the corner at the first pixel of the first row; may be keyed. |
+| `x1` | float | `1` | -1000000000 to 1000000000 | yes | The x coordinate paired with the corner after the last pixel of the first row; may be keyed. |
+| `y1` | float | `0` | -1000000000 to 1000000000 | yes | The y coordinate paired with the corner after the last pixel of the first row; may be keyed. |
+| `x2` | float | `1` | -1000000000 to 1000000000 | yes | The x coordinate paired with the corner after the last pixel of the last row; may be keyed. |
+| `y2` | float | `1` | -1000000000 to 1000000000 | yes | The y coordinate paired with the corner after the last pixel of the last row; may be keyed. |
+| `x3` | float | `0` | -1000000000 to 1000000000 | yes | The x coordinate paired with the corner at the first pixel of the last row; may be keyed. |
+| `y3` | float | `1` | -1000000000 to 1000000000 | yes | The y coordinate paired with the corner at the first pixel of the last row; may be keyed. |
+| `maps` | popup | `source-to-output` | `output-to-source`, `source-to-output` | no | Which frame the four corners belong to: the corners of the source go to the eight values, or the corners of the output read the source at the eight values. |
+| `convention` | popup | `column` | `column`, `row` | no | Whether a point is a column vector (p' = M p) or a row vector (p' = p M) (Config::convention). |
+| `guard` | popup | `return-none` | `return-none`, `clamp`, `pass-through` | no | What happens where the homogeneous divisor is not above divisor_min: the pixel is zero, the divisor is replaced by divisor_min, or the numerators are used undivided (Config::guard). |
+| `divisor_min` | float | `0` | -1000000000 to 1000000000 | no | The divisor is valid when it is above this value (Config::divisor_min); with guard clamp it is also the value divided by. |
+| `coords` | popup | `unit` | `pixel`, `unit` | no | The coordinates of the eight values: the unit square of the frame, or pixel positions. |
+| `xform_center` | popup | `half` | `integer`, `half` | no | Where pixel i has its centre in the pixel coordinates of the matrix: at i, or at i + 0.5 (Config::center). |
+| `y_axis` | popup | `down` | `down`, `up` | no | Whether v of the unit square grows down or up the rows; read when coords is unit (Config::y_axis). |
+| `pixel_aspect` | float | `1` | 0.01 to 100 | no | The width of a pixel over its height; read when coords is pixel (Config::pixel_aspect). |
+| `singular_tolerance` | float | `1e-12` | 0 to 1 | no | The relative pivot tolerance of the four point solve (Config::singular_tolerance). |
+
+Exit codes, as `docs/data/stage_warp_four_point_interface.json` states them, with the scenarios its rows pin:
+
+| Exit | Means | Rows of the interface file |
+|---|---|---|
+| 0 | every input frame was processed and written, or --describe printed its answer | `defaults_return_the_input`, `swapped_corners_mirror_the_frame`, `source_in_the_right_half_of_a_wider_canvas`, `output_to_source_reads_inside_the_corners`, `pixel_coordinates`, `y_axis_up_names_the_lower_row_first`, `key_file_moves_the_corners`, `describe_does_not_judge_the_corners`, `empty_input`, `describe_declared_size`, `describe_zero_keeps_the_side` |
+| 1 | stage_failed: the output could not be written for a reason other than a closed pipe | none |
+| 2 | usage: a bad or missing option, a parameter or a layer given twice, a layer with an empty path | `usage_unknown_option`, `usage_parameter_twice`, `usage_missing_fps`, `usage_layer_twice`, `usage_layer_empty_path` |
+| 3 | unsupported: a depth the stage does not take, a parameter or a layer the stage does not have, a value the stage refuses, a transform or a layer content the configuration refuses | `unsupported_two_corners_at_one_point`, `unsupported_corners_on_a_line`, `unsupported_corners_on_a_line_on_an_empty_input`, `unsupported_corners_on_a_line_from_a_key_file`, `unsupported_depth`, `unsupported_unknown_parameter`, `unsupported_bad_value`, `unsupported_keyed_value_on_the_command_line`, `unsupported_unknown_layer`, `unsupported_output_frame_above_4_gib`, `unsupported_key_for_a_parameter_that_is_not_keyed`, `unsupported_key_value_outside_the_range` |
+| 4 | bad_input, partial_frame or broken_pipe: a failed read, input that ends inside a frame, a frame count other than --frames, a layer file that cannot be read or parsed, a reader that went away | `partial_frame`, `bad_input_frame_count`, `bad_input_key_file_missing`, `bad_input_key_file_malformed` |
+
+Not pinned by a row: `stage_failed` (exit 1), a write to standard output that fails for a reason other than a closed pipe; no test makes one, because it needs a device that differs between systems; `broken_pipe` (exit 4), a reader that closes the pipe while the stage writes; tests/stage_<id>.rs and the convention's conformance tool exercise it, the rows of this file do not.
+
+#### `warp-lens`
+
+Lens distortion warp. Applies or removes a lens distortion on each frame with a radial polynomial model (Brown 1966, 1971), a division model (Fitzgibbon 2001) or a squeezed variant, sampled with a selectable reconstruction filter.
+
+| Item | Rule |
+|---|---|
+| Family, kind | `generic`, `frame`, spool `false` |
+| Command | `mocha-stage apply warp-lens --width W --height H --depth 8\|16\|32 --fps N[/D] [--frames N] [--describe] [--param K=V]... [--layer keys=PATH]` |
+| Geometry | declared: the output is width by height, where 0 keeps the input side; the frame count, the depth and the rate are those of the request; --describe answers the output geometry without reading standard input and without opening a layer; a keyed parameter never changes the geometry; the output canvas is centred on the input frame |
+| Samples | computed on f32 samples: an integer sample v is v / 255 or v / 65535, computed in f64 and rounded once to f32; on the way out a sample x is floor(clamp(x, 0, 1) * max + 0.5) and a sample that is not a number is 0; depth 32 samples are the stream's own floats and are never clamped; each output pixel is sampled by the resample crate at the source position the map of the stage gives for it, under the filter, border, pixel centre, alpha and normalisation rule of the parameters; a pixel without a source position is zero in all four channels; the map is Config::source_map of the lens-model crate for the direction, with the input frame as the image of the model and the centre given as a fraction of its width and height |
+| Layer `keys` | form `keys-1`, optional: A key file with a value per frame for k1, k2, k3, p1, p2, lambda, centre_x and centre_y. Without it: every keyed parameter keeps its command line value. |
+| Own choices | The distortion centre is a fraction of the input width and height (`centre_x`, `centre_y`), so that one default fits every frame size, and an output canvas of another size is centred on the input frame. |
+
+Parameters: the fourteen [sampler parameters](#the-sampler-parameters), then:
+
+| Parameter | Kind | Default | Accepts | Keyed | Meaning |
+|---|---|---|---|---|---|
+| `direction` | popup | `apply` | `apply`, `remove` | no | Whether the stage makes a distorted frame from an undistorted one or the reverse (Direction). |
+| `model` | popup | `radial` | `radial`, `division`, `squeezed` | no | The distortion model: the radial polynomial with tangential terms, the division model, or the radial polynomial on squeezed axes (Model). |
+| `k1` | float | `0` | -100 to 100 | yes | The first radial coefficient; read by radial and squeezed; may be keyed. |
+| `k2` | float | `0` | -100 to 100 | yes | The second radial coefficient; read by radial and squeezed; may be keyed. |
+| `k3` | float | `0` | -100 to 100 | yes | The third radial coefficient; read by radial and squeezed; may be keyed. |
+| `p1` | float | `0` | -100 to 100 | yes | The first tangential coefficient; read by radial; may be keyed. |
+| `p2` | float | `0` | -100 to 100 | yes | The second tangential coefficient; read by radial; may be keyed. |
+| `lambda` | float | `0` | -100 to 100 | yes | The parameter of the division model; read by division; may be keyed. |
+| `squeeze_x` | float | `1` | 0.01 to 100 | no | The factor on x inside the radius; read by squeezed. |
+| `squeeze_y` | float | `1` | 0.01 to 100 | no | The factor on y inside the radius; read by squeezed. |
+| `normalisation` | popup | `half-width` | `half-width`, `half-height`, `half-diagonal`, `focal-length` | no | What pixel offsets from the centre are divided by (Config::normalisation). |
+| `focal_length` | float | `1` | 1e-06 to 1000000000 | no | The divisor when normalisation is focal-length. |
+| `centre_x` | float | `0.5` | -100 to 100 | yes | The distortion centre as a fraction of the input width (Config::centre); may be keyed. |
+| `centre_y` | float | `0.5` | -100 to 100 | yes | The distortion centre as a fraction of the input height (Config::centre); may be keyed. |
+| `pixel_aspect` | float | `1` | 0.01 to 100 | no | The width of a pixel over its height (Config::pixel_aspect). |
+| `maps` | popup | `undistorted-to-distorted` | `undistorted-to-distorted`, `distorted-to-undistorted` | no | Which way the formula of the model goes (Config::maps). |
+| `inverse_method` | popup | `newton` | `fixed-point`, `newton`, `closed-form` | no | How the inverse of the formula is computed where the stage needs it (Config::inverse_method); closed-form exists for division only. |
+| `inverse_iterations` | int | `8` | 0 to 1024 | no | The fixed step count of the iterative inverse methods (Config::inverse_iterations). |
+
+Exit codes, as `docs/data/stage_warp_lens_interface.json` states them, with the scenarios its rows pin:
+
+| Exit | Means | Rows of the interface file |
+|---|---|---|
+| 0 | every input frame was processed and written, or --describe printed its answer | `defaults_return_the_input`, `remove_radial_keeps_the_inner_pixels`, `apply_with_the_formula_read_backward`, `remove_division_fills_each_quadrant`, `closed_form_inverse_leaves_unreached_pixels_zero`, `larger_canvas_is_centred`, `smaller_canvas_is_centred`, `key_file_moves_a_coefficient`, `closed_form_is_not_judged_where_the_inverse_is_not_used`, `empty_input`, `describe_declared_size`, `describe_zero_keeps_the_side` |
+| 1 | stage_failed: the output could not be written for a reason other than a closed pipe | none |
+| 2 | usage: a bad or missing option, a parameter or a layer given twice, a layer with an empty path | `usage_unknown_option`, `usage_parameter_twice`, `usage_missing_fps`, `usage_layer_twice`, `usage_layer_empty_path` |
+| 3 | unsupported: a depth the stage does not take, a parameter or a layer the stage does not have, a value the stage refuses, a transform or a layer content the configuration refuses | `unsupported_closed_form_without_division`, `unsupported_closed_form_without_division_describe`, `unsupported_depth`, `unsupported_unknown_parameter`, `unsupported_bad_value`, `unsupported_keyed_value_on_the_command_line`, `unsupported_unknown_layer`, `unsupported_output_frame_above_4_gib`, `unsupported_key_for_a_parameter_that_is_not_keyed`, `unsupported_key_value_outside_the_range` |
+| 4 | bad_input, partial_frame or broken_pipe: a failed read, input that ends inside a frame, a frame count other than --frames, a layer file that cannot be read or parsed, a reader that went away | `partial_frame`, `bad_input_frame_count`, `bad_input_key_file_missing`, `bad_input_key_file_malformed` |
+
+Not pinned by a row: `stage_failed` (exit 1), a write to standard output that fails for a reason other than a closed pipe; no test makes one, because it needs a device that differs between systems; `broken_pipe` (exit 4), a reader that closes the pipe while the stage writes; tests/stage_<id>.rs and the convention's conformance tool exercise it, the rows of this file do not.
+
+#### `warp-sphere`
+
+Sphere reorientation warp. Turns each full sphere frame by a yaw, pitch and roll rotation between equirectangular (Snyder 1987) or cube face layouts, mono or stereo, sampled with a selectable reconstruction filter.
+
+| Item | Rule |
+|---|---|
+| Family, kind | `generic`, `frame`, spool `false` |
+| Command | `mocha-stage apply warp-sphere --width W --height H --depth 8\|16\|32 --fps N[/D] [--frames N] [--describe] [--param K=V]... [--layer keys=PATH]` |
+| Geometry | declared: the output is width by height, where 0 keeps the input side; the frame count, the depth and the rate are those of the request; --describe answers the output geometry without reading standard input and without opening a layer; a keyed parameter never changes the geometry; a size that does not fit its layout (a cube layout without square faces, a stereo layout without two views) is refused, also by --describe |
+| Samples | computed on f32 samples: an integer sample v is v / 255 or v / 65535, computed in f64 and rounded once to f32; on the way out a sample x is floor(clamp(x, 0, 1) * max + 0.5) and a sample that is not a number is 0; depth 32 samples are the stream's own floats and are never clamped; each output pixel is sampled by the resample crate at the source position the map of the stage gives for it, under the filter, border, pixel centre, alpha and normalisation rule of the parameters; a pixel without a source position is zero in all four channels; the map is the direction of the output pixel under out_layout, turned by the rotation, as a pixel under in_layout, inside the stereo view of the output pixel; for an equirectangular input a column in the last half pixel before the seam is moved back by one width, so that border decides what lies beyond the first and the last column |
+| Layer `keys` | form `keys-1`, optional: A key file with a value per frame for yaw, pitch and roll. Without it: every keyed parameter keeps its command line value. |
+| Own choices | For an equirectangular input a column in the last half pixel before the seam is moved back by one width, so that `border` decides what lies beyond the first and the last column and the stage at its defaults returns the input under the default border. |
+
+Parameters: the fourteen [sampler parameters](#the-sampler-parameters), then:
+
+| Parameter | Kind | Default | Accepts | Keyed | Meaning |
+|---|---|---|---|---|---|
+| `yaw` | float | `0` | -36000 to 36000 | yes | The turn about the up axis in degrees; may be keyed. |
+| `pitch` | float | `0` | -36000 to 36000 | yes | The turn about the x axis in degrees; may be keyed. |
+| `roll` | float | `0` | -36000 to 36000 | yes | The turn about the axis of longitude zero in degrees; may be keyed. |
+| `in_layout` | popup | `equirect` | `equirect`, `cube-row6`, `cube-column6`, `cube-3x2`, `cube-2x3` | no | How the input stores the sphere: equirectangular, or six cube faces in one of four grids (CubeGrid). |
+| `out_layout` | popup | `equirect` | `equirect`, `cube-row6`, `cube-column6`, `cube-3x2`, `cube-2x3` | no | How the output stores the sphere: equirectangular, or six cube faces in one of four grids (CubeGrid). |
+| `stereo` | popup | `mono` | `mono`, `over-under`, `side-by-side` | no | Whether a frame holds one view or two, and how the two are placed (StereoLayout). |
+| `lon_zero` | float | `0.5` | 0 to 1 | no | Where longitude zero lies along the width, as a fraction of the width (Config::lon_zero). |
+| `lon_direction` | popup | `increasing-right` | `increasing-right`, `increasing-left` | no | Whether longitude grows toward larger or smaller columns (Config::lon_direction). |
+| `sphere_center` | popup | `centre` | `centre`, `corner` | no | Whether column i is sampled at (i + 0.5) / width or at i / width of a turn (Config::pixel_center). |
+| `pole_rows` | popup | `inset` | `on-pole`, `inset` | no | Whether the first and the last row lie on the poles or half a row inside them (Config::pole_rows). |
+| `north` | popup | `top` | `top`, `bottom` | no | Which pole is at the first row (Config::north). |
+| `axis_order` | popup | `yaw-pitch-roll` | `yaw-pitch-roll`, `yaw-roll-pitch`, `pitch-yaw-roll`, `pitch-roll-yaw`, `roll-yaw-pitch`, `roll-pitch-yaw` | no | The order in which the three rotations are multiplied; the last named acts first (Config::axis_order). |
+| `angle_sign` | popup | `positive` | `positive`, `negated` | no | Whether the angles are used as given or negated (Config::angle_sign). |
+| `rotation_use` | popup | `direct` | `direct`, `transposed` | no | Whether the matrix or its transpose takes an output direction to a source direction (Config::rotation_use). |
+
+Exit codes, as `docs/data/stage_warp_sphere_interface.json` states them, with the scenarios its rows pin:
+
+| Exit | Means | Rows of the interface file |
+|---|---|---|
+| 0 | every input frame was processed and written, or --describe printed its answer | `defaults_return_the_input`, `yaw_half_turn`, `yaw_quarter_turn`, `yaw_quarter_turn_negated`, `yaw_quarter_turn_transposed`, `yaw_quarter_turn_longitude_to_the_left`, `side_by_side_turns_each_view`, `over_under_turns_each_view`, `cube_layout_at_the_defaults`, `equirect_to_cube_describe`, `key_file_moves_the_yaw`, `empty_input`, `describe_declared_size`, `describe_zero_keeps_the_side` |
+| 1 | stage_failed: the output could not be written for a reason other than a closed pipe | none |
+| 2 | usage: a bad or missing option, a parameter or a layer given twice, a layer with an empty path | `usage_unknown_option`, `usage_parameter_twice`, `usage_missing_fps`, `usage_layer_twice`, `usage_layer_empty_path` |
+| 3 | unsupported: a depth the stage does not take, a parameter or a layer the stage does not have, a value the stage refuses, a transform or a layer content the configuration refuses | `unsupported_cube_input_without_square_faces`, `unsupported_cube_output_without_square_faces`, `unsupported_cube_output_without_square_faces_describe`, `unsupported_stereo_without_two_views`, `unsupported_depth`, `unsupported_unknown_parameter`, `unsupported_bad_value`, `unsupported_keyed_value_on_the_command_line`, `unsupported_unknown_layer`, `unsupported_output_frame_above_4_gib`, `unsupported_key_for_a_parameter_that_is_not_keyed`, `unsupported_key_value_outside_the_range` |
+| 4 | bad_input, partial_frame or broken_pipe: a failed read, input that ends inside a frame, a frame count other than --frames, a layer file that cannot be read or parsed, a reader that went away | `partial_frame`, `bad_input_frame_count`, `bad_input_key_file_missing`, `bad_input_key_file_malformed` |
+
+Not pinned by a row: `stage_failed` (exit 1), a write to standard output that fails for a reason other than a closed pipe; no test makes one, because it needs a device that differs between systems; `broken_pipe` (exit 4), a reader that closes the pipe while the stage writes; tests/stage_<id>.rs and the convention's conformance tool exercise it, the rows of this file do not.
+
+#### `warp-mesh`
+
+Mesh warp. Warps each frame by a triangle mesh with barycentric interpolation inside each triangle (Wolberg 1990) under an explicit shared edge, outside, winding and degenerate triangle rule, sampled with a selectable reconstruction filter.
+
+| Item | Rule |
+|---|---|
+| Family, kind | `generic`, `frame`, spool `false` |
+| Command | `mocha-stage apply warp-mesh --width W --height H --depth 8\|16\|32 --fps N[/D] [--frames N] [--describe] [--param K=V]... [--layer mesh=PATH]` |
+| Geometry | declared: the output is width by height, where 0 keeps the input side; the frame count, the depth and the rate are those of the request; --describe answers the output geometry without reading standard input and without opening a layer; a keyed parameter never changes the geometry |
+| Samples | computed on f32 samples: an integer sample v is v / 255 or v / 65535, computed in f64 and rounded once to f32; on the way out a sample x is floor(clamp(x, 0, 1) * max + 0.5) and a sample that is not a number is 0; depth 32 samples are the stream's own floats and are never clamped; each output pixel is sampled by the resample crate at the source position the map of the stage gives for it, under the filter, border, pixel centre, alpha and normalisation rule of the parameters; a pixel without a source position is zero in all four channels; the map is Warp::inverse of the mesh-warp crate: the output position located in the output positions of the mesh reads the source at the same barycentric coordinates; a position in no triangle follows outside; without the mesh layer every position maps to itself |
+| Layer `mesh` | form `mesh-1`, optional: A mesh file: vertices with a source and an output position in pixels, and triangles. Without it: the identity mesh: every position maps to itself. |
+
+Parameters: the fourteen [sampler parameters](#the-sampler-parameters), then:
+
+| Parameter | Kind | Default | Accepts | Keyed | Meaning |
+|---|---|---|---|---|---|
+| `mesh_tie` | popup | `lowest-index` | `lowest-index`, `pineda` | no | Which triangle owns a point on a shared edge or vertex: the containing triangle of lowest index, or the one the fill rule of Pineda 1988 names (Config::tie). |
+| `outside` | popup | `none` | `none`, `clamp-nearest`, `extend-affine` | no | What a point in no triangle maps to: nothing, the nearest point of the mesh, or the extended map of the nearest triangle (Config::outside). |
+| `winding` | popup | `any` | `any`, `consistent` | no | Whether triangles of both orientations are taken or all must turn the same way (Config::winding). |
+| `bary` | popup | `edge-functions` | `edge-functions`, `cramer` | no | The formula of the barycentric coordinates, which matters for rounding only (Config::bary). |
+| `allow_degenerate` | checkbox | off | on or off | no | Whether triangles of no area are taken and skipped or refused (Config::allow_degenerate). |
+| `grid` | popup | `per-triangle-sqrt` | `per-triangle-sqrt`, `fixed` | no | The size of the grid that speeds up point location: the square root of the triangle count per side, or grid_cols by grid_rows (Config::grid). |
+| `grid_cols` | int | `1` | 1 to 4096 | no | The columns of the location grid; read when grid is fixed. |
+| `grid_rows` | int | `1` | 1 to 4096 | no | The rows of the location grid; read when grid is fixed. |
+
+Exit codes, as `docs/data/stage_warp_mesh_interface.json` states them, with the scenarios its rows pin:
+
+| Exit | Means | Rows of the interface file |
+|---|---|---|
+| 0 | every input frame was processed and written, or --describe printed its answer | `without_a_mesh_the_input_is_returned`, `mesh_moved_one_pixel`, `outside_clamp_nearest`, `outside_extend_affine_zero_border`, `wider_canvas`, `mirror_mesh`, `mixed_winding_is_taken_by_any`, `degenerate_triangle_allowed`, `describe_opens_no_layer`, `empty_input`, `describe_declared_size`, `describe_zero_keeps_the_side` |
+| 1 | stage_failed: the output could not be written for a reason other than a closed pipe | none |
+| 2 | usage: a bad or missing option, a parameter or a layer given twice, a layer with an empty path | `usage_layer_twice`, `usage_layer_empty_path`, `usage_unknown_option`, `usage_parameter_twice`, `usage_missing_fps` |
+| 3 | unsupported: a depth the stage does not take, a parameter or a layer the stage does not have, a value the stage refuses, a transform or a layer content the configuration refuses | `unsupported_degenerate_triangle`, `unsupported_degenerate_triangle_on_an_empty_input`, `unsupported_mixed_winding`, `unsupported_key_file_layer`, `unsupported_depth`, `unsupported_unknown_parameter`, `unsupported_bad_value`, `unsupported_keyed_value_on_the_command_line`, `unsupported_unknown_layer`, `unsupported_output_frame_above_4_gib` |
+| 4 | bad_input, partial_frame or broken_pipe: a failed read, input that ends inside a frame, a frame count other than --frames, a layer file that cannot be read or parsed, a reader that went away | `bad_input_mesh_file_missing`, `bad_input_mesh_file_first_line`, `bad_input_mesh_file_unknown_word`, `bad_input_mesh_file_vertex_values`, `bad_input_mesh_file_number`, `bad_input_mesh_file_vertex_number`, `bad_input_mesh_file_no_triangle`, `bad_input_mesh_file_vertex_not_in_the_file`, `partial_frame`, `bad_input_frame_count` |
+
+Not pinned by a row: `stage_failed` (exit 1), a write to standard output that fails for a reason other than a closed pipe; no test makes one, because it needs a device that differs between systems; `broken_pipe` (exit 4), a reader that closes the pipe while the stage writes; tests/stage_<id>.rs and the convention's conformance tool exercise it, the rows of this file do not.
+
+#### `raster-polygon`
+
+Raster polygon. Rasterises closed polygons from a shape file to a coverage matte, by exact area (Duff 1989) or by point samples, under an explicit fill rule, pixel centre, row direction, combine rule and quantisation, and carries the matte in the frame as the carry parameter says.
+
+| Item | Rule |
+|---|---|
+| Family, kind | `generic`, `frame`, spool `false` |
+| Command | `mocha-stage apply raster-polygon --width W --height H --depth 8\|16\|32 --fps N[/D] [--frames N] [--describe] [--param K=V]... [--layer shape=PATH] [--layer keys=PATH]` |
+| Geometry | preserve: the output has the width, height, depth, rate and frame count of the input; --describe answers the request, or refuses what apply refuses before the first frame, and opens no layer |
+| Samples | with quantise=on the rasteriser gives codes of the depth of the stream and a code is its value divided by full scale; with quantise=off, and at depth 32, the coverage is rounded to f32; apply gives the matte from the coverage and the alpha of the input in f32; on the way out a sample x of depth 8 or 16 is floor(clamp(x, 0, 1) * max + 0.5), and depth 32 is not clamped |
+| Per frame | per frame every point of the polygons is moved by offset_x and offset_y, coverage_raster::rasterise_buffer gives one coverage value per pixel on a target of the frame size with its origin at 0, 0, apply gives the matte from the coverage and the alpha of the input, and carry says which channels hold the matte |
+| Layer `shape` | form `rings-1`, optional: The polygons to rasterise: rings of points in pixels of the frame. Without it: no polygon: the coverage is 0 everywhere. |
+| Layer `keys` | form `keys-1`, optional: A key file with a value per frame for offset_x and offset_y. Without it: every keyed parameter keeps its command line value. |
+| Own choices | `quantise` keeps the crate's default, `on`. |
+
+Parameters:
+
+| Parameter | Kind | Default | Accepts | Keyed | Meaning |
+|---|---|---|---|---|---|
+| `carry` | popup | `alpha` | `alpha`, `luma`, `all` | no | Which channels hold the matte: alpha (colour passes), luma (the three colour channels, alpha at full scale) or all four. |
+| `apply` | popup | `replace` | `replace`, `multiply`, `max` | no | How the coverage meets the alpha of the input frame: it replaces it, multiplies it or the larger of the two is kept. |
+| `method` | popup | `exact-area` | `exact-area`, `point`, `samples-grid`, `samples-rotated` | no | How the coverage of a pixel is found: the exact area, one sample at the pixel centre, or the fraction of a sample pattern (Config::method). |
+| `samples` | int | `4` | 1 to 64 | no | The size of the sample pattern: samples-grid takes samples by samples points per pixel, samples-rotated takes samples points. |
+| `fill` | popup | `non-zero` | `non-zero`, `even-odd` | no | Which winding numbers count as inside (Config::fill). |
+| `centre` | float | `0.5` | 0 to 1 | no | Pixel i has its centre at coordinate i + centre (Config::centre). |
+| `y_down` | checkbox | on | on or off | no | Whether row 0 of the frame is at the smallest y, or at the largest (Config::y_down). |
+| `combine` | popup | `max` | `max`, `add-clamp`, `over`, `replace` | no | How the coverages of several polygons become one plane, in file order (Config::combine). |
+| `precision` | popup | `double` | `double`, `single` | no | Whether a coverage value stays a double or is rounded to single precision after each step (Config::precision). |
+| `snap_bits` | int | `0` | 0 to 30 | no | 0 leaves coordinates as they are; n from 1 to 30 rounds every coordinate to a multiple of 2^-n first (Config::snap_bits). |
+| `quantise` | popup | `on` | `off`, `on` | no | Whether the rasteriser converts the coverage to a code of the depth of the stream (Config::quantise). |
+| `quantise_scale` | popup | `full` | `full`, `power-of-two` | no | The factor from coverage 1 to a code: the largest value of the depth, or that value plus one; read when quantise is on (Quantise::scale). |
+| `quantise_rounding` | popup | `nearest-half-up` | `nearest-half-up`, `nearest-even`, `floor`, `ceil` | no | How a scaled coverage becomes a whole code; read when quantise is on (Quantise::rounding). |
+| `offset_x` | float | `0` | -1000000000 to 1000000000 | yes | Added to the x of every point before the rasteriser runs, in pixels; may be keyed. |
+| `offset_y` | float | `0` | -1000000000 to 1000000000 | yes | Added to the y of every point before the rasteriser runs, in pixels; may be keyed. |
+
+Exit codes, as `docs/data/stage_raster_polygon_interface.json` states them, with the scenarios its rows pin:
+
+| Exit | Means | Rows of the interface file |
+|---|---|---|
+| 0 | every input frame was written; an empty input is zero frames; --describe printed its answer | `rectangle_to_alpha`, `carry_luma`, `carry_all_apply_multiply`, `method_point`, `quantise_floor`, `keyed_offset_three_frames`, `no_shape_covers_nothing`, `empty_input`, `describe` |
+| 1 | stage_failed: a write failed for a reason other than a closed pipe, or the rasteriser failed on a frame; no scenario here reaches it | none |
+| 2 | usage: a bad or missing option, a parameter or a layer given twice, a layer with an empty path | `parameter_twice`, `layer_twice`, `layer_with_an_empty_path` |
+| 3 | unsupported: a depth, a parameter, a layer or a value the stage does not take, a frame above the limits of the rasteriser, a number of the shape file above 1e9 in absolute value, a key for a parameter that is not keyed | `unknown_parameter`, `choice_not_listed`, `value_out_of_range`, `keyed_value_on_the_command_line`, `depth_not_taken`, `frame_above_the_rasteriser`, `key_for_a_parameter_that_is_not_keyed`, `shape_number_above_the_bound` |
+| 4 | bad_input, partial_frame or broken_pipe: a layer file that cannot be read or does not follow its form, an input that ends inside a frame, a frame count other than --frames, a reader that went away | `shape_file_missing`, `partial_frame_after_one_frame`, `frame_count_differs`, `key_file_malformed`, `shape_file_of_another_form`, `ring_with_two_points` |
+
+#### `raster-contour`
+
+Raster contour. Flattens cubic Bezier and X-spline contours (Farin 2002; Blanc and Schlick 1995) from a shape file to polylines under an explicit flattening rule and evaluation configuration, rasterises them to a coverage matte as raster-polygon does, and carries the matte in the frame as the carry parameter says.
+
+| Item | Rule |
+|---|---|
+| Family, kind | `generic`, `frame`, spool `false` |
+| Command | `mocha-stage apply raster-contour --width W --height H --depth 8\|16\|32 --fps N[/D] [--frames N] [--describe] [--param K=V]... [--layer shape=PATH] [--layer keys=PATH]` |
+| Geometry | preserve: the output has the width, height, depth, rate and frame count of the input; --describe answers the request, or refuses what apply refuses before the first frame, and opens no layer |
+| Samples | with quantise=on the rasteriser gives codes of the depth of the stream and a code is its value divided by full scale; with quantise=off, and at depth 32, the coverage is rounded to f32; apply gives the matte from the coverage and the alpha of the input in f32; on the way out a sample x of depth 8 or 16 is floor(clamp(x, 0, 1) * max + 0.5), and depth 32 is not clamped |
+| Per frame | before the first frame every contour is flattened to one ring with contour_eval::flatten under the rule of flatten and its constants; from there the stage is raster-polygon on the rings: the keyed offsets move every point of the polylines, the rasteriser gives the coverage, apply gives the matte and carry says which channels hold it |
+| Layer `shape` | form `contours-1`, optional: The contours to rasterise: cubic Bezier or X-spline control points in pixels of the frame. Without it: no polygon: the coverage is 0 everywhere. |
+| Layer `keys` | form `keys-1`, optional: A key file with a value per frame for offset_x and offset_y. Without it: every keyed parameter keeps its command line value. |
+| Own choices | `quantise` keeps the crate's default, `on`. |
+
+Parameters: the fifteen parameters of [`raster-polygon`](#raster-polygon), with the same ids, defaults and ranges, then:
+
+| Parameter | Kind | Default | Accepts | Keyed | Meaning |
+|---|---|---|---|---|---|
+| `flatten` | popup | `uniform` | `uniform`, `subdivide`, `by-length` | no | The rule that turns a span into segments: a fixed count, midpoint subdivision to a flatness bound, or a count from the length of the span (Flatten). |
+| `segments` | int | `16` | 1 to 4096 | no | The segments per span; read when flatten is uniform (Flatten::Uniform). |
+| `tolerance` | float | `0.25` | 0 to 1000000 | no | The largest distance the flatness test accepts, in pixels; read when flatten is subdivide (Flatten::Subdivide tol). |
+| `max_depth` | int | `10` | 0 to 24 | no | The deepest subdivision; read when flatten is subdivide (Flatten::Subdivide max_depth). |
+| `step` | float | `1` | 1e-06 to 1000000 | no | The length one segment stands for, in pixels; read when flatten is by-length (Flatten::ByLength step). |
+| `length_samples` | int | `16` | 1 to 4096 | no | The parameter steps of the length estimate of a span; read when flatten is by-length (Flatten::ByLength samples). |
+| `form` | popup | `bernstein` | `bernstein`, `de-casteljau`, `horner` | no | The evaluation form of a cubic Bezier span (Config::form). |
+| `eval_precision` | popup | `f64` | `f32`, `f64` | no | The number type inside an evaluation (Config::precision). |
+| `tangents` | popup | `relative` | `relative`, `absolute` | no | Whether a Bezier tangent handle is an offset from its anchor or a position (Config::tangents). |
+| `open_end` | popup | `repeat-end` | `repeat-end`, `repeat-end-sharp` | no | How the ends of an open X-spline contour are extended (Config::open_end). |
+| `closing_span` | checkbox | on | on or off | no | Whether a closed contour has the span from its last point back to its first (Config::closing_span). |
+| `repeat_first` | checkbox | off | on or off | no | Whether the polyline of a closed contour ends with a copy of its first point (Config::repeat_first). |
+| `flat_test` | popup | `sampled` | `control-polygon`, `sampled` | no | The flatness test of the subdivide rule; control-polygon takes Bezier contours only (Config::flat_test). |
+| `weight_map` | popup | `identity` | `identity`, `unit-to-signed`, `hundred-to-unit`, `hundred-to-signed` | no | The map from a stored X-spline weight w to the shape parameter: w, 2w - 1, w / 100 or w / 50 - 1 (Config::weight_map, the four maps of Config::WEIGHT_MAPS). |
+
+Exit codes, as `docs/data/stage_raster_contour_interface.json` states them, with the scenarios its rows pin:
+
+| Exit | Means | Rows of the interface file |
+|---|---|---|
+| 0 | every input frame was written; an empty input is zero frames; --describe printed its answer | `rectangle_to_alpha`, `carry_luma`, `carry_all_apply_multiply`, `method_point`, `quantise_floor`, `keyed_offset_three_frames`, `no_shape_covers_nothing`, `empty_input`, `describe`, `two_segments_per_span`, `subdivide_rule` |
+| 1 | stage_failed: a write failed for a reason other than a closed pipe, or the rasteriser failed on a frame; no scenario here reaches it | none |
+| 2 | usage: a bad or missing option, a parameter or a layer given twice, a layer with an empty path | `parameter_twice`, `layer_twice`, `layer_with_an_empty_path` |
+| 3 | unsupported: a depth, a parameter, a layer or a value the stage does not take, a frame above the limits of the rasteriser, a number of the shape file above 1e9 in absolute value, a key for a parameter that is not keyed, a contour the flattening refuses | `unknown_parameter`, `choice_not_listed`, `value_out_of_range`, `keyed_value_on_the_command_line`, `depth_not_taken`, `frame_above_the_rasteriser`, `key_for_a_parameter_that_is_not_keyed`, `flatness_test_refuses_an_xspline`, `weight_outside_the_variant`, `shape_number_above_the_bound` |
+| 4 | bad_input, partial_frame or broken_pipe: a layer file that cannot be read or does not follow its form, an input that ends inside a frame, a frame count other than --frames, a reader that went away | `shape_file_missing`, `partial_frame_after_one_frame`, `frame_count_differs`, `key_file_malformed`, `shape_file_of_another_form`, `point_with_the_fields_of_another_kind` |
+
+#### `track-planar`
+
+Track planar. Tracks a planar region through the frames by direct intensity based registration (the Lucas and Kanade family with Levenberg and Marquardt damping on a Gaussian pyramid), writes every frame as it was read and writes one pose per frame, a 3 by 3 matrix from the reference frame to that frame, to the key file named by data.
+
+| Item | Rule |
+|---|---|
+| Family, kind | `generic`, `temporal`, spool `false` |
+| Command | `mocha-stage apply track-planar --width W --height H --depth 8\|16\|32 --fps N[/D] [--frames N] [--param K=V]...` |
+| Geometry | preserve: the output has the width, height, depth, rate and frame count of the input; --describe answers the request |
+| Frames | temporal, spool false: frame N is written once it has been tracked |
+| Samples | The grey level the tracker reads is luma_r * R + luma_g * G + luma_b * B on the samples scaled to full scale 1 (depth 8 divided by 255, depth 16 by 65535, depth 32 as stored). Alpha is not read. The frames themselves are written byte for byte. |
+| Layers | none; any `--layer` is unsupported (exit 3) |
+| Data file | The parameter data names a key file of form keys-1: the line keys-1, one comment line, the line start 0, then for every frame N the nine lines key m00 N VALUE linear to key m22 N VALUE linear, row major. The matrix maps a point of the reference frame to the same point of the tracked surface in frame N, in pixels with the centre of the first pixel at 0, scaled so that m22 is 1. The file is written under a temporary name in the folder of the target and renamed when the input has ended; a run that fails leaves the target path as it was. |
+| Report file | The parameter report names a table: the line track-report-1, one comment line that names the ten columns (frame, source, stop, converged, iterations, rms, valid_fraction, inlier_fraction, gain, offset), then one row per frame with the cells separated by one blank. source is reference, tracked or held; stop is none, step-tol, cost-tol, lambda-max, max-iterations, max-rejections, no-pixels or refused. A held row follows a comment line that gives the refusal. |
+| Refused frame | A frame the tracker refuses keeps the pose of its neighbour towards the reference when refusal is hold, and ends the run as unsupported when refusal is fail. |
+| Own choices | `refusal` defaults to `hold`, and the eight corner values at 0 stand for the whole frame. `gain_ratio` (0) and `boundary_ramp` (4) have no default in the crate; the values are the stage's own. |
+
+Parameters:
+
+| Parameter | Kind | Default | Accepts | Keyed | Meaning |
+|---|---|---|---|---|---|
+| `data` | text | empty | a path, or empty | no | The path of the key file the stage writes (form keys-1, tracks m00 to m22, one linear key per frame); empty writes none. |
+| `report` | text | empty | a path, or empty | no | The path of a table the stage writes with one row per frame (source, stop reason, iterations, residual, valid and inlier fractions, gain, offset); empty writes none. |
+| `x0`, `y0`, `x1`, `y1`, `x2`, `y2`, `x3`, `y3` | float | `0` | -1000000000 to 1000000000 | no | One coordinate of a corner of the tracked region on the reference frame, in pixels with the centre of the first pixel at 0; the four corners go around the boundary, and when all eight values are 0 the region is the whole frame. |
+| `reference` | int | `0` | 0 to 1000000000 | no | The index of the frame that holds the region; its pose is the identity. Frames before it wait in memory until it has been read. |
+| `luma_r` | float | `0.2126` | 0 to 1 | no | The weight of R in the grey level the tracker reads; the default weights are those of ITU-R BT.709. |
+| `luma_g` | float | `0.7152` | 0 to 1 | no | The weight of G in the grey level the tracker reads. |
+| `luma_b` | float | `0.0722` | 0 to 1 | no | The weight of B in the grey level the tracker reads. |
+| `dof` | popup | `affine` | `translation`, `trans-scale`, `similarity`, `affine`, `homography` | no | The degrees of freedom of the motion model (Config::dof). |
+| `rule` | popup | `inverse-compositional` | `forward-additive`, `forward-compositional`, `inverse-compositional`, `esm` | no | The warp update rule (Config::rule). |
+| `illumination` | popup | `off` | `off`, `joint`, `alternate` | no | The gain and offset model of the grey level (Config::illumination). |
+| `damping` | popup | `marquardt` | `levenberg`, `marquardt` | no | How the damping term is added to the normal matrix (LmConfig::damping). |
+| `acceptance` | popup | `decrease` | `decrease`, `decrease-or-equal`, `gain-ratio` | no | The test that accepts a trial step (LmConfig::acceptance). |
+| `gain_ratio` | float | `0` | 0 to 0.999 | no | The least ratio of actual to predicted reduction; read when acceptance is gain-ratio. The crate has no default; 0 is this stage's. |
+| `boundary` | popup | `off` | `off`, `linear`, `smoothstep`, `quadratic` | no | The weight of a region pixel from its distance to the outside of the region (SelectionConfig::boundary). |
+| `boundary_ramp` | float | `4` | 1e-06 to 65536 | no | The distance in pixels at which the boundary weight reaches 1; read when boundary is not off. The crate has no default; 4 is this stage's. |
+| `velocity` | popup | `off` | `off`, `constant-image-space` | no | The first guess of a frame: the pose of its neighbour, or that pose moved once more by the last motion (Config::velocity). |
+| `pyramid_levels` | int | `4` | 1 to 16 | no | The most levels of the pyramid (PyramidConfig::levels). |
+| `pyramid_scale` | float | `2` | 1 to 8 | no | The size ratio between neighbouring levels, above 1 (PyramidConfig::scale). |
+| `pyramid_taps` | int | `5` | 1 to 15 | no | The taps of the binomial blur kernel, odd (PyramidConfig::kernel_taps). |
+| `pyramid_min_size` | int | `12` | 1 to 65536 | no | A level narrower or lower than this is not built (PyramidConfig::min_size). |
+| `lambda_init` | float | `0.0001` | 0 to 1000000000000 | no | The damping at the start of every level (LmConfig::lambda_init). |
+| `lambda_up` | float | `10` | 1 to 1000000 | no | The factor on the damping after a rejected step, above 1 (LmConfig::lambda_up). |
+| `lambda_down` | float | `0.1` | 0 to 1 | no | The factor on the damping after an accepted step, above 0 (LmConfig::lambda_down). |
+| `lambda_min` | float | `1e-09` | 0 to 1000000000000 | no | The damping is never lowered below this (LmConfig::lambda_min). |
+| `max_iterations` | int | `30` | 1 to 100000 | no | The most steps of one level (LevelParams::max_iterations). |
+| `max_rejections` | int | `10` | 1 to 100000 | no | The rejected steps in a row after which a level stops (LevelParams::max_rejections). |
+| `step_tol` | float | `0.001` | 0 to 1000000 | no | A level stops when the largest corner motion of an accepted step is below this, in level pixels (LevelParams::step_tol). |
+| `cost_tol` | float | `1e-09` | 0 to 1 | no | A level stops when the relative fall of the cost in an accepted step is below this (LevelParams::cost_tol). |
+| `lambda_max` | float | `100000000` | 1e-09 to 1000000000000000000 | no | A level stops when the damping exceeds this (LevelParams::lambda_max). |
+| `selection_fraction` | float | `0.5` | 0 to 1 | no | The share of the region pixels kept, those of largest gradient, above 0 (SelectionConfig::min_fraction). |
+| `min_weight` | float | `0.05` | 0 to 1 | no | The floor of every pixel weight, above 0 (SelectionConfig::min_weight). |
+| `border_is_outside` | checkbox | on | on or off | no | Whether the pixels beyond the frame edge count as outside the region in the distance transform (SelectionConfig::border_is_outside). |
+| `ncc` | checkbox | off | on or off | no | Whether a search by normalised cross correlation over whole pixel shifts runs before the registration (NccConfig::enabled). |
+| `ncc_level` | int | `-1` | -1 to 15 | no | The pyramid level of the coarse search; -1 is the coarsest level in use (NccConfig::level). |
+| `ncc_radius` | int | `6` | 0 to 4096 | no | The radius of the search window in pixels of that level (NccConfig::radius). |
+| `ncc_step` | int | `1` | 1 to 4096 | no | The step of the window scan in pixels of that level (NccConfig::step). |
+| `ncc_min_valid_fraction` | float | `0.6` | 0 to 1 | no | A shift is scored only when this share of the selected pixels falls inside the frame, above 0 (NccConfig::min_valid_fraction). |
+| `ncc_min_score` | float | `0` | -1 to 1 | no | The best score must reach this for the shift to be taken (NccConfig::min_score). |
+| `inlier_threshold` | float | `0.05` | 0 to 1000000 | no | A pixel is an inlier when its absolute residual is at most this, in grey units (Config::inlier_threshold). |
+| `min_valid_pixels` | int | `12` | 1 to 1000000000 | no | A level is abandoned when fewer pixels than this fall inside the frame (Config::min_valid_pixels). |
+| `refusal` | popup | `hold` | `hold`, `fail` | no | What a frame the tracker refuses does: hold keeps the pose of its neighbour towards the reference and says so in the report, fail ends the run as unsupported. |
+
+Exit codes, as `docs/data/stage_track_planar_interface.json` states them, with the scenarios its rows pin:
+
+| Exit | Means | Rows of the interface file |
+|---|---|---|
+| 0 | every input frame was written and the files asked for are in place; an empty input is zero frames | `pass_through_at_the_defaults`, `pass_through_with_a_data_file`, `describe_answers_the_request`, `empty_input` |
+| 1 | stage_failed: the data file or the report file could not be created, written or moved into place, or a write of a frame failed for a reason other than a closed reader | `data_file_cannot_be_written` |
+| 2 | usage: a bad or missing option, a parameter given twice, one path for data and report | `one_path_for_both_files`, `parameter_given_twice`, `unknown_option` |
+| 3 | unsupported: a depth other than 8, 16 or 32, a parameter or a layer the stage does not have, a value outside its range or choices, a keyed value on the command line, a configuration the planar-track crate refuses, corners that do not go around a convex region, a refused frame when refusal is fail | `depth_not_taken`, `unknown_parameter`, `choice_not_offered`, `value_out_of_range`, `keyed_value_on_the_command_line`, `configuration_the_crate_refuses`, `corners_not_convex`, `layer_not_taken`, `refused_frame_with_refusal_fail` |
+| 4 | bad_input, partial_frame or broken_pipe: a failed read, a frame count other than --frames, a reference frame that is not among the frames read, an input that ends inside a frame, a reader that went away | `input_ends_inside_a_frame`, `frame_count_differs`, `reference_beyond_the_input` |
 
 ### The generic crates
 
@@ -711,7 +1502,7 @@ python -I tools/check_docs.py
 - **The table format, version 2.** `crates/effect-params/tests/extra_fields.rs`, `tests/table_v2.rs` and `tests/table_v2_fix.rs` check the extra cell of every kind, the ten cells of a version 2 row, the escapes, the refusals with their line numbers, that a version 1 file still loads, that the serializer refuses a table its own loader would refuse, and the pairing by id.
 - **The shell crate.** `crates/effect-shell/tests/shell.rs` and `tests/v2.rs` drive `EffectMain` and the dispatch with a mock host written in the tests, on made up tables: the bytes of every definition handed to the host, each directive, the order of the host calls, refused suites and missing callbacks, null records, a host error that stops the setup or is kept to the end, and a panic in a host callback. `tests/units.rs` checks the handler table: each command reaches its handler, a missing handler is the default case, and a panicking handler is reported; `tests/register.rs`, a test binary of its own because the registered table is process wide, checks that a registered table is the one `EffectMain` uses. `tests/interface_layout.rs` and the unit tests of `src/render_layout.rs` pin every size and member offset of the host structures. `tests/pipl.rs` checks the bytes of the property list and of its resource object, and `tests/pipl_dll.rs` reads the resource back from a built Windows library when one is present and does nothing otherwise. `tests/arena.rs` checks the allocator and the memory functions of the freestanding build on the host, on x86_64 only, and `tests/round_half_away.rs` checks its rounding helper against the standard one.
 - **The frame crate.** The seven test files of `crates/frame-io` check the sizes and limits of a geometry, reading and writing whole frames with the partial frame error, every pattern at every depth, the sample accessors, the comparer on equal and differing streams with negative zero and NaN payloads, the two binaries with their exit codes, and the binaries against `docs/data/frame_tools_interface.json`. Their frames are invented.
-- **The stage crate.** `crates/stage-cli` has unit tests in its modules and `tests/cli.rs`, which runs the built `mocha-stage`: the manifest, every argument rule, the copied frames at the three depths, the partial frame, and each exit code.
+- **The stage crate.** `crates/stage-cli` has unit tests in its modules; `tests/cli.rs`, which runs the built `mocha-stage` on the self test stage: the manifest, every argument rule, the copied frames at the three depths, the partial frame, and each exit code; `tests/framework.rs`, which checks the registry against its own rules, the text of the self test entry, the family and the claim sentence of every generic stage and that the provider holds no `unit` stage, the provider command and the shipped provider file against it, that every stage answers `--describe` and runs at its defaults at each depth with the declared size and the same bytes twice, the refusals every stage shares, the key file and parameter rules, the 4 GiB limit of an output frame, and a provider built on the same library; one `tests/stage_<id>.rs` for each generic stage but `resample-scale`, whose computation `tests/framework.rs` checks, which checks what the stage computes against the crate it calls on made up frames and layer files; and the interface tests, which run every row of each stage's interface file against the built binary. Their frames, keys, shapes and meshes are invented.
 - **The generic crates.** Each of the seven has test files of its own, on made up data with hand computed expectations. `crates/pixel-format/tests/convert.rs`, `alpha.rs`, `config.rs` and `layout.rs` sweep every integer input of the three depths under each rounding and precision, the midpoints and maxima, NaN payloads, infinities, negative zero and subnormals under each clamp, the premultiply ties, the 240 enumerated choices with canonical text that parses back, and the strides, origins and overflow of the layout. `crates/contour-eval/tests/vectors.rs`, `bezier.rs`, `xspline.rs`, `flatten.rs`, `errors.rs`, `config.rs` and `audit_segment.rs`, with the unit tests of `src/flatten.rs`, check vectors written as bit patterns and computed in exact rational arithmetic, the Bezier and X-spline properties, the three flattening rules, every refusal and the 768 configurations. `crates/coverage-raster/tests/exact_area.rs`, `methods.rs`, `sampling.rs`, `edge_cases.rs`, `combine_quant.rs`, `reference.rs` and `audit_regress.rs`, with the unit tests of `src/exact.rs`, check rectangles, triangles, holes, self intersection and either orientation under both fill rules, the sample methods and the tie rule, degenerate and out of range input, the combine and quantise rules, an independent supersampling reference and the 7616 configurations. `crates/planar-xform/tests/core.rs`, `solve.rs`, `pixel.rs` and `audit_fix.rs` check composition, the inverse, the divisor guards, the four point solve against an independent solver in rational arithmetic, the pixel conversions and every configuration choice. `crates/resample/tests/filters.rs`, `kernels.rs`, `borders.rs`, `alpha_config.rs`, `reference.rs` and `audit_round1.rs` check kernel values worked by hand, the sinc error bound, every border rule, identity mappings for each filter, translations and scaling, the tie rules, the box footprints, alpha, normalisation, the configuration space and an independent slow reference. `crates/lens-model/tests/model.rs`, `config.rs`, `resample.rs` and `audit_gaps.rs` check the maps on dyadic inputs, the inverses against an independent bisection and the closed form of the division model, the conversions and the mapped bounds. `crates/soft-edge/tests/kernels.rs`, `blur.rs`, `distance.rs`, `feather.rs`, `border_cfg.rs` and `audit_regress.rs` check hand computed kernels, single lit pixels, half plane edges, the distance transform against brute force, each ramp profile and direction, the border rules and the refusal of a size that does not fit. No test here involves the original.
 - **The shape crates.** `shape-model` has no test file of its own; the four test files of `shape-canon` exercise both crates. `crates/shape-canon/tests/canon.rs` checks the hexadecimal text of known values (`hex_known_values`), that it gives back the bits of zeros of both signs, normal and subnormal values, the largest value and an infinity (`hex_round_trips_bits`), and that other spellings are refused (`hex_rejects_noncanonical`), and that an exponent written -0 is read like +0 and never written (`hex_reads_minus_zero_exponent`); that `Contour::new` refuses bad keys (`model_validates_keys`); the hold before, at and after the keys and the blend halfway between two keys, with the earlier key's flag and missing optional number kept (`interpolation_holds_and_lines`); the rectangle of three points (`bounds_span_anchors`); the whole dump of the case of [the case form](#the-case-form), byte for byte (`predict_exact_bytes`); the empty meta section (`meta_off_leaves_section_empty`); and the refusals of the case form (`case_parse_errors`). `crates/shape-canon/tests/model_hypotheses.rs` pins the hypotheses more tightly: the blend at a quarter and at three quarters of a segment, and the rounding of `a + (b - a) * u` on a span that is not a power of two, to the last bit (`quarter_point_not_symmetric`); the choice of segment among three keys (`three_keys_pick_segment`); the NaN query time (`nan_query_holds_first`); a negative zero at the first key and at an inner key, kept (`negative_zero_at_inner_key_kept`); both flags held from the earlier key (`flags_hold_earlier_key`); the sign of a zero extreme, and of a zero width and height, when extremes tie (`bounds_signed_zero`); and the text of a negative zero query time (`negative_zero_query_time_text`). Comments in `quarter_point_not_symmetric` and `bounds_signed_zero` say that the rounding form and the tie rule they pin are hypotheses of the crate that have not been compared with the original. `crates/shape-canon/tests/cli.rs` runs the binary as a child process on invented case files that it writes into a fresh folder under the system temporary directory, and checks the exit codes and the standard error forms of [`shape-predict`](#shape-predict): exit 0 with the dump that `predict` gives for the same case on standard output and nothing on standard error (`valid_case_exit_0_dump_on_stdout`), and the same output when a second argument is given (`second_argument_is_ignored`); exit 1 with `error: line ` for a bad line (`bad_line_exit_1`), and with `error: ` but not `error: line ` for a case that `Contour::new` refuses (`refused_contour_exit_1`); exit 2 with exactly the usage line when no file is named (`no_argument_exit_2_usage`), and with `read failed: ` for a file that does not exist (`missing_file_exit_2`) or is not UTF-8 (`non_utf8_file_exit_2`); every refused run leaves standard output empty, and the exit code 1 for a standard output that cannot be written is not exercised. `crates/shape-canon/tests/interface_contract.rs` holds the [interface file](#shape-predict) to the binary. It reads the file as plain text and, for each of the six exit code rows, makes the run that the row describes, in the same way as `tests/cli.rs` and with invented input, and checks the exit code, the standard error line (empty, its beginning or the whole line, as the row says) and that standard output is empty on every refused run and not on the valid one (`exit_code_rows_match_the_binary`); it also checks that the file lists the exit codes 0, 1 and 2 and no other and names the dump form `shape-1`, and that the dump of a valid case begins with `format=shape-1` (`only_documented_exit_codes_and_dump_name`). No test here involves the original.
 - **The mask sequence crate.** Three of the six test files of `mask-seq`, `cli.rs`, `validate.rs` and `interface_contract.rs`, share the helpers of `crates/mask-seq/tests/common/mod.rs`, which write an invented sequence of three frames, 4 by 2 at depth 8, into a fresh folder under the system temporary directory and change it as each run of the interface file needs; the other three work on bytes in memory (`manifest.rs` also reads this page), and no frame file is committed. `crates/mask-seq/tests/sha256.rs` checks the hash against six published test vectors of the NIST Cryptographic Algorithm Validation Program: five messages of 1, 55, 56, 63 and 64 bytes, at the edges of the padding, from `SHA256ShortMsg.rsp` (`cavp_short_messages`), and one of 163 bytes, three blocks, from `SHA256LongMsg.rsp` (`cavp_long_message`). It also checks that a message fed in two parts at every split point, for every length up to 130 bytes, or in chunks of five sizes, gives the hash of the whole (`split_updates_equal_one_shot`); four of the computed constants against the values FIPS 180-4 gives (`derived_constants_spot_values`); and the hexadecimal text, with its refusals of 63 and 65 digits, upper case and other characters (`hex_text`). `crates/mask-seq/tests/pgm.rs` checks the round trip of frames at depth 8 and 16, with the exact bytes of one 16-bit frame (`round_trip_8_bit`, `round_trip_16_bit`); that bytes and frames come back unchanged through each other, sides of 65535 included (`canonical_bytes_identity`); 26 headers that the reader refuses (`refuses_noncanonical_headers`); a file one byte short or one byte long, a header with no samples and 16-bit samples with an odd byte count (`refuses_truncated_and_trailing`); the checks of `Frame::new` (`frame_new_checks`); and the values of the two depths (`depth_values`). `crates/mask-seq/tests/manifest.rs` checks that the two invented frames of [the mask sequence form](#the-mask-sequence-form) give exactly its example manifest (`example_exact_bytes`); reads that example from this page and checks that it is the same text and that `Manifest::parse` accepts it (`reference_example_is_canonical`); checks the round trip of a manifest of the last two indexes at depth 16 and a width of 65535 (`round_trip`), 17 refusals of the form, each with its line (`refuses_syntax`), 16 values out of range or naming another form, each with its kind and line (`refuses_format_and_values`), and that the first fault in line order wins, in `Manifest::new` as well (`first_fault_in_line_order`). `crates/mask-seq/tests/validate.rs` runs the library's `validate` on folders it writes: every reason word but `frame_read`, with the detail of its interface row (`each_reason_word`); the same `ok` line for a folder and for its manifest path (`valid_folder_and_manifest_path`); a path that does not exist, which cannot be read (`missing_path_is_unreadable`); four pairs of faults, of which the earlier check wins (`first_fault_wins`); other files ignored, and the smallest extra frame name reported (`extra_frames_sorted_other_files_ignored`); 16-bit frames whose indexes end at 999999 (`nonzero_first_and_16_bit`); the refusals of `write_sequence`, which leave no manifest behind, and the manifest it returns, equal to the one it writes (`write_sequence_refusals`); and, running the binary as well, with exit 1, empty standard output and exactly the `error:` line: a frame that differs from the manifest in its width only and one that differs in its height only (`size_fault_in_one_side_only`), a frame file name below the first index and one with seven digits, each extra (`frame_named_files_outside_the_range_are_extra`), and a folder in place of a frame file, which counts as missing (`folder_in_place_of_a_frame_is_missing`). `crates/mask-seq/tests/cli.rs` runs the binary as a child process and checks exit 0 with the library's `ok` line on standard output and nothing on standard error, for a folder and for its manifest path (`valid_folder_exit_0`, `valid_manifest_path_exit_0`); exit 1 with the library's `error:` line, alone, on standard error for a frame whose hash differs (`invalid_exit_1_one_line`); exit 2 with exactly the usage line for no argument and for two (`no_argument_exit_2_usage`, `two_arguments_exit_2_usage`), and with `read failed: ` for a path that does not exist (`missing_path_exit_2`); standard output stays empty on every refused run. `crates/mask-seq/tests/interface_contract.rs` holds the [interface file](#mask-validate) to the binary and the library: it makes each of the 17 runs of the file and checks the exit code and both streams (`exit_code_rows_equal_the_binary`), checks the reason words against `Reason::ALL`, with the exit code and the detail of each, and the details that `error_line` names for the four manifest reasons (`reason_words_equal_the_library`), and checks the exit codes and the three names (`documented_codes_and_forms`). The exit paths of `frame_read`, of a manifest that exists but cannot be read and of a standard output that cannot be written are not exercised. No test here involves the original.
@@ -735,10 +1526,12 @@ This file specifies what the repository holds. The other files each cover one co
 | [`docs/reproduce.md`](reproduce.md) | The checks that need only this repository, the inputs you bring, and the steps that produce the evidence again. |
 | [`docs/internals/README.md`](internals/README.md) | How the crates are put together, the rules their code keeps, the checks that cover them, and what a change has to leave passing. |
 | [`docs/internals/shape-crates.md`](internals/shape-crates.md) | The two shape crates in detail: what they compute, the hypotheses with the code and the tests behind each, and what a change to them has to keep. |
-| [`docs/handoff.md`](handoff.md) | Where the repository stands against the handoff convention of twixtor and sapphire: the stage program and its self test stage, the frame tools, the file forms that can be exchanged, the exit codes, the steps of joining and the known gaps. |
+| [`docs/handoff.md`](handoff.md) | Where the repository stands against the handoff convention of twixtor and sapphire: the stage program with its self test stage and its generic stages, the frame tools, the file forms that can be exchanged, the exit codes, the steps of joining and the known gaps. |
 | `docs/data/result_schema.json` | The fields of a result file. |
 | `docs/data/shape_predict_interface.json` | The arguments, streams, dump form name and exit codes of `shape-predict`, in a machine-readable form for programs that run it. |
 | `docs/data/mask_validate_interface.json` | The argument, streams, names, reason words and exit codes of `mask-validate`, in a machine-readable form for programs that run it. |
+| `docs/data/stage_<id>_interface.json` | One file for each generic stage of `mocha-stage`: its arguments, streams, parameters, layers, geometry, sample rule and exit codes, with the rows that pin them, in a machine-readable form for programs that run it. |
+| `crates/stage-cli/providers/mocha_pro.stage.json` | The provider file: the stage manifest in the form a peer of the convention reads. |
 | `docs/data/frame_tools_interface.json` | The arguments, streams, patterns and exit codes of `frame-gen` and `frame-cmp`, in a machine-readable form for programs that run them. |
 | `contracts/` | The schemas, the tool registry and the conformance cases of the handoff convention, held byte for byte as twixtor publishes them at commit 8087d06. |
 | `docs/data/facts.json` | Every generated figure with its value and source, written by `tools/gen_docs.py`. |
