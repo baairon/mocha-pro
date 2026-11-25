@@ -151,3 +151,5 @@ Continuous integration builds the crates and runs their tests and the tests of t
 ## Not offered
 
 The licence, activation and machine identity code of the original is never part of this project ([Left out](../README.md#left-out)), and no stage will ever stand in for it.
+
+The interactive interface of the product's standalone editor is not rebuilt either ([Left out](../README.md#left-out)); the capabilities in scope are to be offered as stages.

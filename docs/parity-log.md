@@ -178,3 +178,11 @@ On Linux, with Rust 1.94.0 and Python 3.12.3, after `crates/frame-io` and `crate
 ## 2026-11-24: the licence boundary
 
 **The licence boundary.** The licence module's library requests are answered from the emulated machine, its plain folder and environment questions get the emulator's declared answers, its other unanswerable calls get the documented Windows not found or not available failure, machine identity questions from it get their documented failure, and its start-up routine is not run during the engine load ([README: left out](../README.md#left-out)). No answer gives a licensed state. This supersedes the line of [2026-11-17](#2026-11-17-the-judge) that such calls are never answered.
+
+## 2026-11-24: the limits and the scope
+
+**What changed.** The statements of limits and scope were brought in line with the static reading ([README: limits](../README.md#limits)). The scope is stated as the plug-in, its render engine and its planar tracker, each capability to be rebuilt as a stage program for command line use, without the interactive interface of the product's standalone editor. For the modules that the original gates behind its licence state, what their comparison rests on is stated by route. The planar tracker is stated as to be compared within a tolerance on the corners of the tracked surface. The rules for a frame that carries an overlay and for frames supplied by the owner were added to the method ([parity: frames that carry an overlay](parity.md#frames-that-carry-an-overlay)).
+
+**What it rests on.** Readings of the original's code, not runs, and the rules of the method. A reading of the planar tracker found an iterative solver with two code paths and switches whose names show that they exist to manage a difference between them; the size of that difference was not read. No reading is a measurement.
+
+**What has not run.** When this entry was written, no render command of the original had run in the emulator, no frame had been compared, no track had been compared, and no frame had been supplied by the owner. No tool computes the status for a frame that carries an overlay yet.
