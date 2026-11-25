@@ -1,0 +1,10 @@
+[package]
+name = "pixel-format"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Generic pixel sample conversion between integer and float depths with every rounding, precision, clamp and alpha choice explicit, plus pixel layouts with a row stride."
+
+[dependencies]
+frame-io = { path = "../frame-io" }

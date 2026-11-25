@@ -186,3 +186,19 @@ On Linux, with Rust 1.94.0 and Python 3.12.3, after `crates/frame-io` and `crate
 **What it rests on.** Readings of the original's code, not runs, and the rules of the method. A reading of the planar tracker found an iterative solver with two code paths and switches whose names show that they exist to manage a difference between them; the size of that difference was not read. No reading is a measurement.
 
 **What has not run.** When this entry was written, no render command of the original had run in the emulator, no frame had been compared, no track had been compared, and no frame had been supplied by the owner. No tool computes the status for a frame that carries an overlay yet.
+
+## Test runs, 2026-11-24, with seven generic crates
+
+On Linux, with Rust 1.94.0 and Python 3.12.3, after `crates/pixel-format`, `crates/contour-eval`, `crates/coverage-raster`, `crates/planar-xform`, `crates/resample`, `crates/lens-model` and `crates/soft-edge` were added, with their seven workspace members and their entries in `Cargo.lock`; `pixel-format` has one dependency edge, to `frame-io`. Against the [runs with the frame and stage crates](#test-runs-2026-11-24-with-the-frame-and-stage-crates), only the row of the crate tests changed: it gains the 932 tests of the seven new crates, and the build row is new. The status tests, the generated outputs and the pages are as before. The new crates had not run on macOS or Windows by then; the CI workflow is where they first meet those two systems. None of these runs compares anything with the original: the seven crates compute from published sources with made up inputs, and none has had a configuration selected by comparison.
+
+| Suite | Result |
+|---|---|
+| `cargo test --locked --no-fail-fast` | 1317 pass (147 in `effect-params`, 87 in `frame-io`, 44 in `mask-seq`, 26 in `shape-canon`, 81 in `stage-cli`, 98 in `pixel-format`, 132 in `contour-eval`, 188 in `coverage-raster`, 136 in `planar-xform`, 136 in `resample`, 104 in `lens-model`, 138 in `soft-edge`), 0 fail, 0 ignored |
+| `cargo build --locked --all-targets` | no error |
+| `cargo fmt --all -- --check` | no change needed |
+| `cargo clippy --locked --all-targets -- -D warnings` | no warning |
+| `python -I tools/test_status.py` | 96 tests, OK |
+| `python -I tools/test_gen_docs.py` | 13 tests, OK |
+| `python -I tools/test_check_docs.py` | 32 tests, OK, 1 skipped: the test that reads a term list skips when none is named |
+| `python -I tools/gen_docs.py --check` | 9 outputs, 0 drifted, 0 unknown keys |
+| `python -I tools/check_docs.py` | 8 pages, 0 findings, 2 checks not run (no term list named) |
