@@ -79,7 +79,7 @@ Run from the repository root. Both crates are covered by the commands of [Intern
 
 ## What lives outside the repository
 
-The cases of the shape data check and the dumps predicted for them, which were written and sealed before any run of the original and are kept private, and the harness side of the check, which is built to have the original build the same shape from each case and to write what it reports in the dump form. Nothing in the repository needs them to build or to pass its checks.
+The cases of the shape data check and the dumps predicted for them, which were written and sealed before any run of the original on a shape case and are kept private, and the harness side of the check, which is built to have the original build the same shape from each case and to write what it reports in the dump form. Nothing in the repository needs them to build or to pass its checks.
 
 The tests of the two crates are also probed with deliberately broken copies of the crates, one planted error per copy, to see whether a test notices. Those runs and their records are kept outside the repository, so this page gives no count for them.
 

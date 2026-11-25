@@ -1,14 +1,16 @@
 # Parity
 
-This page defines parity for the rewrite, describes how it is checked against the original Mocha Pro 2024 plug-in, and reports what the checks have found. The [README](../README.md#parity) gives the summary.
+This page defines parity for the rewrite, describes how it is checked against the original Mocha Pro 2024 plug-in, states what is observed of the original, and reports what the checks have found. The [README](../README.md#parity) gives the summary.
 
 ## Summary
 
 **<!--f:status_line-->method and preparation only: 0 cases compared<!--/f-->.** The repository holds the method, the tools that turn result files into the figures on this page, the rewrite's side of the first step, the interface pairing (`crates/effect-params`), and the rewrite's side of a second prepared check, the shape data check (`crates/shape-model` and `crates/shape-canon`). The sections below that describe a check are the specification of that check. What a run measures goes into a result file, and every figure on this page is generated from those files.
 
-**The interface comes first.** Before any output is compared, the parameters the original registers with its host are read in the emulator and paired with a prediction that was sealed before the original first ran, and the original is booted twice to show that it is deterministic under the harness ([below](#the-interface-pairing-and-calibration)). Neither step carries a parity label: they show that the judge runs and that the two sides describe the same controls, not that any output agrees.
+**The interface comes first.** Before any output is compared, the parameters the original registers with its host are recorded in the emulator and paired field by field with a prediction that is sealed before the registration it is paired with is observed, and the original is booted twice to show that it is deterministic under the harness ([below](#the-interface-pairing-and-calibration)). Neither step carries a parity label: they show that the judge runs and that the two sides describe the same controls, not that any output agrees.
 
-**Shape data is predicted before any run as well.** For each case of the shape data check, the text the rewrite predicts for a shape at a list of times was written and sealed before any run of the original, to be compared byte for byte with what the original reports ([below](#the-shape-data-check)). The rules behind the prediction are hypotheses, labelled as such, and no case has been compared.
+**The original's registration is observed.** In the emulator the original runs to the end of its parameter setup and registers its parameters, and the harness records them. That observation comes from one boot on a reduced, declared host: it is not a result of record and not parity evidence, and a comparison with it carries no parity label ([below](#the-observed-registration)). No result file records a comparison with it, or a second boot that reaches the end of the parameter setup.
+
+**Shape data is predicted before any run of its cases.** For each case of the shape data check, the text the rewrite predicts for a shape at a list of times was written and sealed before any run of the original on a shape case, to be compared byte for byte with what the original reports ([below](#the-shape-data-check)). The rules behind the prediction are hypotheses, labelled as such, and no case has been compared.
 
 **Matches comes first, Verified after it.** Each needs a named rung, all in-contract cases compared, no difference, and at least one call record compared, with every compared record equal on the two sides; Verified adds that the mutants exposed the errors planted in the rewrite ([status rule](#the-status-rule)). An independent repeat of the whole check, on fresh copies, then fills the Re-run column.
 
@@ -48,7 +50,7 @@ References come from the original inside the emulator, and the emulator follows 
 This section is the specification. A result file records what was run and with which commands.
 
 1. **Units.** A unit is one measured part of the plug-in's behaviour behind its host interface, checked on its own: an id, the entry the host calls, and the rewrite code that answers it.
-2. **The interface pairing.** Once for the plug-in, before any unit: its registered parameters are read in the emulator and paired with the rewrite's sealed prediction, and the original is booted twice ([below](#the-interface-pairing-and-calibration)).
+2. **The interface pairing.** Once for the plug-in, before any unit: its registered parameters are recorded in the emulator and paired field by field with the rewrite's sealed prediction, and the original is booted twice ([below](#the-interface-pairing-and-calibration)).
 3. **Test cases.** A deterministic generator writes each unit's test set: no fewer than <!--f:case_floor-->150<!--/f--> in-contract cases, edge values among them, plus a list of candidates that may fall outside the contract.
 4. **The original side.** The harness loads the unchanged plug-in into the emulator and takes it through the host's sequence of calls, setup and then one call per case, translating the case's inputs on the way in and the result on the way out. What comes out is the reference for that case.
 5. **The rewrite side.** The rewrite is given the same case.
@@ -82,9 +84,9 @@ The harness carries unit tests of its own, which run on synthetic plug-in images
 
 ### The interface pairing and calibration
 
-The first comparison is of parameter tables, not of outputs. When the plug-in sets itself up, it registers its parameters with the host: for each one an id, a kind, a name, a default, a range and flags. The harness reads that table from the emulated original. Before the original first runs, the rewrite's prediction of the same table is written and sealed, with the SHA-256 of the file and a UTC time, so that no prediction can be adjusted to what the run shows. A sealed file is never edited, and a row changed after the original's output has been seen is void.
+The first comparison is of parameter tables, not of outputs. When the plug-in sets itself up, it registers its parameters with the host: for each one an id, a kind, a name, a default, a range and flags. The harness records that table from the emulated original. The rewrite's prediction of the same table is to be written and sealed before the registration it is paired with is observed, with the SHA-256 of the file and a UTC time, so that no prediction can be adjusted to what a run shows. A sealed file is never edited, and a row changed after the original's output has been seen is void.
 
-The pairing then matches each predicted row with at most one observed row: by the host parameter id where both rows carry one, otherwise by the exact name, then by a normalized name, otherwise not at all. Defaults, ranges and flags are compared as bits, never as printed digits, and neither side is rewritten before the comparison. A cell that the product's documentation does not settle is left unknown in the prediction; an unknown is never read as zero, and it is not scored. The pairing passes only when nothing is unmatched on either side, and the field differences are counted beside it. `crates/effect-params` holds the rewrite's side of this: the table format and the comparison ([reference: the pairing](reference.md#the-pairing)).
+The pairing then matches each predicted row with at most one observed row: by the host parameter id where both rows carry one, otherwise by the exact name, then by a normalized name, otherwise not at all. Defaults, ranges and flags are compared as bits, never as printed digits, and neither side is rewritten before the comparison. A cell that the prediction's sources do not settle is left unknown in the prediction; an unknown is never read as zero, and it is not scored. The pairing passes only when nothing is unmatched on either side, and the field differences are counted beside it. `crates/effect-params` holds the rewrite's side of this: the table format and the comparison ([reference: the pairing](reference.md#the-pairing)).
 
 The calibration boots the original twice, in separate processes, and compares the two call records and the two dumps of what it registered, byte for byte. A difference there means the harness is not deterministic, and nothing it produces is used as a reference until the cause is found.
 
@@ -94,9 +96,26 @@ Equal tables do not mean equal output: two parameters can share a name and a ran
 No result file records an interface pairing or a calibration yet.
 <!--/gen:pairing-->
 
+### The observed registration
+
+The original's registration of its parameters is observed. Run in the emulator with its engine, its file unmodified on disk, the original takes the host's global setup and parameter setup commands and registers its parameters with the mock host to the end of the parameter setup; the harness records each registration in the dump of what it registered. The dump and the call record of that run are kept outside the repository; no name, default, range or flag from them is in it.
+
+The observation has these limits:
+
+- **One boot.** It comes from a single boot. No result file records a calibration on a boot that reaches the end of the parameter setup.
+- **A reduced, declared host.** The emulated host answers from declared models of a fresh machine, and files the emulated machine does not hold are answered not found. These are declared values of a fresh emulated machine, not observations of a real one.
+- **The licence boundary.** What [README: left out](../README.md#left-out) states applies to this observation unchanged.
+- **Not a result of record.** It is an observation on a reduced, declared host, not a result of record and not parity evidence, and a comparison with it carries no parity label.
+
+A comparison with it is made this way. The rewrite's parameter table is set against the registrations the original makes in the emulator, field by field, by [the pairing](reference.md#the-pairing): each predicted row is matched with at most one observed row, by id, then by exact name, then by a normalized name, and the kind, id, name, default, minimum, maximum, flags, extra cell and host words each get a verdict, with values compared as bits. The rules of the seal and of the pairing above apply unchanged.
+
+Such a comparison can show whether the two tables agree field by field on that host, with values compared as bits. It cannot show anything about an output, a render or a frame; whether a second boot registers the same table; what the original registers under other host answers or on a real machine; or whether two parameters that agree render alike, which only the grids can tell. Everything beyond the fields of that one registration stays unmeasured.
+
+A result of such a comparison is stated on these pages only from a result file whose rung is null, in the generated table of [the interface pairing](#the-interface-pairing-and-calibration), and always with the label above. No result file records one.
+
 ### The shape data check
 
-The second prepared check compares shape data, not rendered output. A case describes one shape, a contour of Bezier control points stored as keyframes, and a list of query times. For each case the rewrite predicts, with `shape-predict`, a text dump of the points at every query time and, where the case asks for them, the rectangle around their anchor positions and four meta values ([reference: the dump form](reference.md#the-dump-form)). The predicted dumps were written and sealed before any run of the original, and they are kept private, as the cases are. On the original's side the harness, which is not in this repository, is built to have the original build the same shape from the same case and to write what it reports in the same text; the two texts are then compared byte for byte. Every float other than NaN keeps all its bits in that text, so equal text means equal values, with -0 and 0 apart; a NaN is written without its sign or payload, so NaNs are compared as a class. A value predicted as `UNKNOWN` is never counted as a correct prediction.
+The second prepared check compares shape data, not rendered output. A case describes one shape, a contour of Bezier control points stored as keyframes, and a list of query times. For each case the rewrite predicts, with `shape-predict`, a text dump of the points at every query time and, where the case asks for them, the rectangle around their anchor positions and four meta values ([reference: the dump form](reference.md#the-dump-form)). The predicted dumps were written and sealed before any run of the original on a shape case, and they are kept private, as the cases are. On the original's side the harness, which is not in this repository, is built to have the original build the same shape from the same case and to write what it reports in the same text; the two texts are then compared byte for byte. Every float other than NaN keeps all its bits in that text, so equal text means equal values, with -0 and 0 apart; a NaN is written without its sign or payload, so NaNs are compared as a class. A value predicted as `UNKNOWN` is never counted as a correct prediction.
 
 The predictions rest on hypotheses, not on measurements: how the points are kept at a key, blended between keys and held outside them, and how the rectangle is spanned and its ties are broken. Each is labelled INFERRED in the code and pinned by a test ([internals: the hypotheses](internals/shape-crates.md#the-hypotheses)). Only a compared case can confirm or refute one, and no case has been compared. Like the pairing, this check is not the bar: it tests what the rewrite predicts the original reports about a shape, not that any rendered output agrees.
 
@@ -122,7 +141,7 @@ Some inputs of the original cannot be produced the way After Effects or Windows 
 
 Parts of the original's code are read statically, without running it; [README: legal](../README.md#legal) names the parts. Each read is written up as a specification of method, interfaces and formats: the host interactions in their order, what a stage of a render computes with the formulas, number types and rounding it uses, or the form of the project data. A specification holds no code excerpt and no instruction listing, and it is kept outside the repository, like the predicted tables. Code here that rests on one is written from it and from what the emulator shows.
 
-A specification is not a measurement, and no reading is one. A row that is only read from a specification is not compared, and a unit that rests on such rows carries the label set for them ([the status rule](#the-status-rule)). What [README: limits](../README.md#limits) states about the modules that the original gates behind its licence state and about the planar tracker rests on readings of the original's code and on the rules of the method, not on runs.
+A specification is not a measurement, and no reading is one. A row that is only read from a specification is not compared, and a unit that rests on such rows carries the label set for them ([the status rule](#the-status-rule)). Where a specification predicts what the original registers with its host, the measurement it is checked against is [the observed registration](#the-observed-registration), with that observation's label. What [README: limits](../README.md#limits) states about the modules that the original gates behind its licence state and about the planar tracker rests on readings of the original's code and on the rules of the method, not on runs.
 
 ### The status rule
 
@@ -176,6 +195,7 @@ The harness-wide stand-ins the harness is built to apply to every run. The harne
 - **Stacks and threads.** The main thread's stack is 1 MiB, the stand-in value of [twixtor's harness](https://github.com/baairon/twixtor/blob/8087d06ac43023f954de2cc58583b132a3243ff4/parity/harness/README.md#stand-ins) for a host value that is not known, and threads switch only when one waits, in one reproducible order.
 - **Time and randomness.** Never the machine's own: a time read stops the run until a fixed clock is registered, and random bytes come from a seeded stream.
 - **Host services.** A service on the declared list of absent ones is answered "not found"; a request with no declared answer stops the run. Among the absent ones are optional components of Windows that the Microsoft C runtime probes for and that the harness does not model.
+- **The declared machine.** Questions about the emulated machine's files, folders, environment, registry, locale and desktop are answered from declared models of a fresh machine: declared values, not observations of a real one.
 - **Licence, activation and machine identity.** The licence module gets only the boundary answers listed in [README: left out](../README.md#left-out), none of them a licensed state or a machine identity value; any other call it makes to the host stops the run, and so does a licence or activation call from any other part of the original.
 
 ### The NaN rule
@@ -211,7 +231,7 @@ Each difference ever found between the original and the rewrite goes here with i
 
 ## Reproducing the results
 
-The original plug-in, the Windows system libraries for the emulator's file system, Adobe's After Effects SDK, the harness, the predicted tables, and the cases of the shape data check with their predicted dumps are not in the repository. [Reproduce](reproduce.md) says what each one is for and where it comes from, and lists the steps in order.
+The original plug-in, the Windows system libraries for the emulator's file system, Adobe's After Effects SDK, the harness, the predicted tables, the record of the original's registration of its parameters, and the cases of the shape data check with their predicted dumps are not in the repository. [Reproduce](reproduce.md) says what each one is for and where it comes from, and lists the steps in order.
 
 ## Terms
 
@@ -221,11 +241,12 @@ The original plug-in, the Windows system libraries for the emulator's file syste
 | judge | the engine that runs the original: here an emulator that follows the architecture manual, not silicon |
 | result file | the machine-written record of one unit at one rung, in the fields of `docs/data/result_schema.json` |
 | rung | a level of the measurement ladder: what was compared, and how much it lets a claim say |
-| predicted table | the rewrite's table of the plug-in's parameters, written and sealed before the original runs |
+| predicted table | the rewrite's table of the plug-in's parameters, written and sealed before the registration it is paired with is observed |
+| observed registration | the parameters the original registers with the mock host in the emulator, as the harness records them; an observation on a reduced, declared host, not a result of record and not parity evidence |
 | pairing | the match of the predicted table with the table the original registers, name by name, fields as bits |
 | calibration | two boots of the original that must give the same call record and the same dump |
 | shape case | a text file that describes one contour stored as keyframes and the times at which to query it, read by `shape-predict` |
-| predicted dump | the text the rewrite predicts for a shape case, in the dump form of the reference, written and sealed before the original runs |
+| predicted dump | the text the rewrite predicts for a shape case, in the dump form of the reference, written and sealed before the original runs on that case |
 | hypothesis | a rule of the rewrite that no measurement backs; the code labels it INFERRED |
 | in contract | a case whose behaviour the original defines |
 | out of contract | a case whose behaviour the original leaves undefined; counted apart, neither pass nor failure |
