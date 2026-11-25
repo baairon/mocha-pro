@@ -6,6 +6,14 @@
 //! different parameters), and never an empty name (an empty name is not a key). The verdict
 //! reports the key used.
 
+#[cfg(not(feature = "std"))]
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
+
 use crate::{
     flags::ParamFlags,
     table::{Cell, ParamDef, Table},

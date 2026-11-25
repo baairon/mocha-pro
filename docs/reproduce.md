@@ -8,7 +8,7 @@ Without any outside input the crates build and test, the predictor writes the du
 
 | Command | Checks |
 |---|---|
-| `cargo test --locked --no-fail-fast` | the eighteen crates build, and their tests pass |
+| `cargo test --locked --no-fail-fast` | the nineteen crates build, and their tests pass |
 | `cargo fmt --all -- --check` and `cargo clippy --locked --all-targets -- -D warnings` | formatting and lints, every warning an error |
 | `python -I tools/test_status.py`, `test_gen_docs.py` and `test_check_docs.py` | the tests of the three tools |
 | `python -I tools/gen_docs.py --check` | every generated figure and table equals what the result files give; exits 1 when a page is stale |

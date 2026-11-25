@@ -19,6 +19,13 @@ name = "effect-params"
 version = "0.1.0"
 
 [[package]]
+name = "effect-shell"
+version = "0.1.0"
+dependencies = [
+ "effect-params",
+]
+
+[[package]]
 name = "frame-io"
 version = "0.1.0"
 

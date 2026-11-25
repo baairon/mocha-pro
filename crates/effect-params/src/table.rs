@@ -46,8 +46,15 @@
 //! on load) or `b:<16 hex digits>` (float as its exact bit pattern). The flags cell is
 //! `?` or `0x<hex>`. The serializer always writes floats as `b:` so a round trip is exact.
 
+#[cfg(not(feature = "std"))]
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
+
 use crate::{extra::Extra, flags::ParamFlags, kind::ParamKind};
-use std::fmt;
+use core::fmt;
 
 /// A table cell that may be unknown. Unknown is never the same as zero.
 #[derive(Clone, Copy, Debug)]
@@ -180,7 +187,7 @@ impl fmt::Display for ParseError {
     }
 }
 
-impl std::error::Error for ParseError {}
+impl core::error::Error for ParseError {}
 
 /// A table that [`Table::serialize`] would write in a form the parser refuses.
 #[derive(Debug, PartialEq, Eq)]
@@ -196,7 +203,7 @@ impl fmt::Display for ValidateError {
     }
 }
 
-impl std::error::Error for ValidateError {}
+impl core::error::Error for ValidateError {}
 
 const MAGIC_V1: &str = "table v1";
 const MAGIC_V2: &str = "table v2";
