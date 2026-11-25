@@ -202,3 +202,11 @@ On Linux, with Rust 1.94.0 and Python 3.12.3, after `crates/pixel-format`, `crat
 | `python -I tools/test_check_docs.py` | 32 tests, OK, 1 skipped: the test that reads a term list skips when none is named |
 | `python -I tools/gen_docs.py --check` | 9 outputs, 0 drifted, 0 unknown keys |
 | `python -I tools/check_docs.py` | 8 pages, 0 findings, 2 checks not run (no term list named) |
+
+## Test runs, 2026-11-24, with five more generic crates
+
+On Linux, with Rust 1.94.0 and Python 3.12.3, the tests of `crates/sphere-reorient`, `crates/mesh-warp`, `crates/blend-ops`, `crates/key-eval` and `crates/planar-track` ran in a separate run, in a workspace without the seven generic crates of the [runs with seven generic crates](#test-runs-2026-11-24-with-seven-generic-crates). The five crates were then joined with those of that run in one workspace, with their five workspace members and their entries in `Cargo.lock`; none of the five has a dependency. The total below is a sum of the two runs, not a run of the joined workspace; the CI workflow runs the crate tests and the page checks on the joined workspace, on Linux, macOS and Windows, and it is where the five crates first meet the last two systems. The new crates are generic and compute nothing of the plug-in; no configuration of any of them has been selected by comparison. Their tests use invented data: the tracking tests render an invented textured plane and hold its corners within 0.15 pixels of the truth. None of these runs compares anything with the original.
+
+| Suite | Result |
+|---|---|
+| `cargo test --locked --no-fail-fast`, sum of two runs | 2126 pass: 1317 in the [runs with seven generic crates](#test-runs-2026-11-24-with-seven-generic-crates), and 809 in the separate run (126 in `sphere-reorient`, 117 in `mesh-warp`, 184 in `blend-ops`, 167 in `key-eval`, 215 in `planar-track`), 0 fail, 0 ignored |
