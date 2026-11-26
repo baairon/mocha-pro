@@ -69,6 +69,10 @@ name = "planar-xform"
 version = "0.1.0"
 
 [[package]]
+name = "plugin-commands"
+version = "0.1.0"
+
+[[package]]
 name = "resample"
 version = "0.1.0"
 

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/effect-params", "crates/effect-shell", "crates/shape-model", "crates/shape-canon", "crates/mask-seq", "crates/frame-io", "crates/stage-cli", "crates/pixel-format", "crates/contour-eval", "crates/coverage-raster", "crates/planar-xform", "crates/resample", "crates/lens-model", "crates/soft-edge", "crates/sphere-reorient", "crates/mesh-warp", "crates/blend-ops", "crates/key-eval", "crates/planar-track", "crates/eye-layout", "crates/mod-remove"]
+members = ["crates/effect-params", "crates/effect-shell", "crates/shape-model", "crates/shape-canon", "crates/mask-seq", "crates/frame-io", "crates/stage-cli", "crates/pixel-format", "crates/contour-eval", "crates/coverage-raster", "crates/planar-xform", "crates/resample", "crates/lens-model", "crates/soft-edge", "crates/sphere-reorient", "crates/mesh-warp", "crates/blend-ops", "crates/key-eval", "crates/planar-track", "crates/eye-layout", "crates/mod-remove", "crates/plugin-commands"]
 
 [workspace.package]
 version = "0.1.0"
