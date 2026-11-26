@@ -151,8 +151,8 @@ global directive in step.
 
 * No engine, no rendering and no output of any plug-in. The sequence, render and setdown commands
   go to the unit table (below), which is empty in this crate, so they return 0 and do nothing.
-* No result file covers the crate, so it has no part in the status of `docs/parity.md`, and it has
-  not been loaded by a real host.
+* No unit result file covers the crate, so it has no part in the status of `docs/parity.md`, and it
+  has not been loaded by a real host.
 * No engine call; the engine flags word is an input (`set_engine_flags`).
 * No `ansi.strcpy` call through the host utilities: names are written directly, so the host sees
   no string copy calls.

@@ -65,6 +65,7 @@ This page is for anyone who changes or extends the code with nothing but this re
 | Page checks | `tools/check_docs.py` | The rules every page and text file keeps ([reference: page checks](../reference.md#page-checks)). |
 | Tool tests | `tools/test_status.py`, `tools/test_gen_docs.py`, `tools/test_check_docs.py` | One test file per tool, on invented fixtures in temporary directories. |
 | Result file schema | `docs/data/result_schema.json` | The fields a result file carries. |
+| Survey comparison schema | `docs/data/survey_comparison_schema.json` | The fields the survey capture comparison file carries. |
 | Interface of `shape-predict` | `docs/data/shape_predict_interface.json` | The arguments, streams, dump form name and exit codes of `shape-predict` in a machine-readable form, for programs that run it ([reference: shape-predict](../reference.md#shape-predict)). |
 | Interface of the frame tools | `docs/data/frame_tools_interface.json` | The arguments, streams, patterns and exit codes of `frame-gen` and `frame-cmp` in a machine-readable form ([reference: the frame tools](../reference.md#frame-gen-and-frame-cmp)). |
 | Interface of `mask-validate` | `docs/data/mask_validate_interface.json` | The argument, streams, names, reason words and exit codes of `mask-validate` in a machine-readable form, for programs that run it ([reference: mask-validate](../reference.md#mask-validate)). |
