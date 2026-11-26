@@ -182,7 +182,7 @@ Measured against the convention:
 | The conformance tool | Not held here, and not run by continuous integration. |
 | Conformance levels 0, 2, 4 and 5 | Not run. |
 | Conformance with a frame layer | No stage has a layer of frames. Level 1 varies the frame size, which such a layer would have to follow, so the tool checks a stage of that kind at its defaults only, and its own tests check it with the layer file. |
-| Crates without a stage | `blend-ops` and `key-eval` are offered as libraries only: no stage composites two frame streams, and the key files are evaluated by the stage program itself. `effect-params`, `shape-model`, `shape-canon`, `mask-seq`, `frame-io` and `eye-layout` work on tables, shapes, mask folders, the frame contract and eye layouts, not as stages. |
+| Crates without a stage | `blend-ops` and `key-eval` are offered as libraries only: no stage composites two frame streams, and the key files are evaluated by the stage program itself. `effect-params`, `shape-model`, `shape-canon`, `mask-seq`, `frame-io`, `eye-layout` and `mod-remove` work on tables, shapes, mask folders, the frame contract, eye layouts and the frames that replace a layer, not as stages. |
 | Conformance on Windows | Not run: the conformance tool is run on Linux only. CI builds the stage program and runs its tests on Windows ([Platforms](#platforms)), and the program passes `cargo clippy` for the target `x86_64-pc-windows-gnu` on Linux. |
 | ffmpeg | Never used here. |
 | A peer | Neither twixtor nor sapphire has been chained with `mocha-stage`. |
