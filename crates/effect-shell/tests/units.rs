@@ -1,5 +1,6 @@
 //! Tests of the unit table hook with made up handlers: routing, null pointers reaching the
 //! handler, panics, the default case and the registered table.
+use effect_shell::arb_layout::CMD_ARBITRARY_CALLBACK;
 use effect_shell::layout::*;
 use effect_shell::render_layout::*;
 use effect_shell::units::*;
@@ -33,6 +34,7 @@ fn full() -> UnitTable {
         render: Some(rec),
         pre_render: Some(rec),
         smart_render: Some(rec),
+        arbitrary: Some(rec),
     }
 }
 
@@ -170,4 +172,24 @@ fn rect_types_are_exported() {
         bottom: 2,
     };
     assert!(!r.is_empty());
+}
+
+#[test]
+fn the_arbitrary_data_callback_command_reaches_its_handler() {
+    SEEN.with(|s| s.borrow_mut().clear());
+    assert_eq!(CMD_ARBITRARY_CALLBACK, 22);
+    let t = full();
+    assert_eq!(
+        unsafe { call(&t, CMD_ARBITRARY_CALLBACK, null_mut(), null_mut()) },
+        122
+    );
+    let none = UnitTable {
+        arbitrary: None,
+        ..full()
+    };
+    assert_eq!(
+        unsafe { call(&none, CMD_ARBITRARY_CALLBACK, null_mut(), null_mut()) },
+        ERR_BAD_CALLBACK_PARAM,
+        "no handler: the default dispatch refuses a null in_data"
+    );
 }

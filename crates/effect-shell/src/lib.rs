@@ -19,6 +19,7 @@ compile_error!(
 #[cfg(feature = "freestanding")]
 extern crate alloc;
 
+pub mod arb_layout;
 #[cfg(feature = "freestanding")]
 pub mod freestanding;
 pub mod layout;
