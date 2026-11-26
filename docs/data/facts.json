@@ -11,6 +11,12 @@
     "source": "tools/status.py totals over the result files, one part per rung",
     "value": "method and preparation only: 0 cases compared"
   },
+  "survey_comparison_files": {
+    "source": "parity/*/results/survey_comparison.json",
+    "value": [
+      "parity/param-registration/results/survey_comparison.json"
+    ]
+  },
   "units_total": {
     "source": "count of parity/*/results/summary.json",
     "value": "0"

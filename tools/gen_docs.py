@@ -13,6 +13,10 @@ when an independent re-run has written one. The rules that turn a result file in
 tools/status.py (the status rule of docs/parity.md). A repository with no result file reads
 "method and preparation only: 0 cases compared" and carries no parity label.
 
+The second input is the survey capture comparison file, parity/<unit>/results/survey_comparison.json, in the
+fields of docs/data/survey_comparison_schema.json. At most one exists; it is printed only in the survey block
+and never counted as a unit.
+
 --check is hermetic: it reads the result files and the tree and runs no process. A result file that is not
 valid JSON or lacks a field is an error (exit 3), not a row.
 
@@ -38,6 +42,13 @@ G_RE = re.compile(r"(<!--gen:([A-Za-z0-9_.-]+)-->\r?\n)(.*?)(<!--/gen:\2-->)", r
 FACTS = "docs/data/facts.json"
 EMPTY_LINE = "method and preparation only: 0 cases compared"
 REQUIRED = ["unit", "rung", "judge", "comparator", "cases", "values", "call_records", "mutants"]
+SURVEY_GLOB = ("parity", "*", "results", "survey_comparison.json")
+SURVEY_COMPARISON = "survey capture comparison"
+SURVEY_LABEL = "never a result of record, never parity evidence"
+SURVEY_KEYS = {"unit", "comparison", "label", "every_row_has_a_counterpart", "members", "members_not_compared"}
+CLASSES = ("blind", "word_selected", "informed")
+VERDICTS = ("compared", "equal", "different")
+REASONS = ("form",)
 
 
 class DataError(Exception):
@@ -65,6 +76,83 @@ def load_results(root):
             raise DataError("{}: {}".format(rel, e)) from None
         out.append((rel, r))
     return out
+
+
+def _count(x):
+    return isinstance(x, int) and not isinstance(x, bool) and x >= 0
+
+
+def check_survey(rel, folder, r):
+    """Raise DataError unless r is exactly in the fields of docs/data/survey_comparison_schema.json."""
+    def bad(why):
+        raise DataError("{}: {}".format(rel, why))
+    if not isinstance(r, dict) or set(r) != SURVEY_KEYS:
+        bad("keys are not exactly those of the survey comparison schema")
+    if r["unit"] != folder:
+        bad("names another unit ({})".format(r["unit"]))
+    if r["comparison"] != SURVEY_COMPARISON:
+        bad("comparison is not {!r}".format(SURVEY_COMPARISON))
+    if r["label"] != SURVEY_LABEL:
+        bad("label is not {!r}".format(SURVEY_LABEL))
+    if not isinstance(r["every_row_has_a_counterpart"], bool):
+        bad("every_row_has_a_counterpart is not a boolean")
+    m = r["members"]
+    if not isinstance(m, dict) or set(m) != set(CLASSES):
+        bad("members keys are not exactly {}".format(", ".join(CLASSES)))
+    for c in CLASSES:
+        v = m[c]
+        if not isinstance(v, dict) or set(v) != set(VERDICTS):
+            bad("members.{} keys are not exactly {}".format(c, ", ".join(VERDICTS)))
+        if not all(_count(v[k]) for k in VERDICTS):
+            bad("members.{} holds a count that is not an integer of 0 or more".format(c))
+        if v["equal"] + v["different"] != v["compared"]:
+            bad("members.{}: equal + different is not compared".format(c))
+    n = r["members_not_compared"]
+    if not isinstance(n, dict) or not set(n) <= set(REASONS):
+        bad("members_not_compared holds a reason outside {}".format(", ".join(REASONS)))
+    for reason, split in n.items():
+        if not isinstance(split, dict) or set(split) != set(CLASSES):
+            bad("members_not_compared.{} keys are not exactly {}".format(reason, ", ".join(CLASSES)))
+        if not all(_count(split[c]) for c in CLASSES):
+            bad("members_not_compared.{} holds a count that is not an integer of 0 or more".format(reason))
+
+
+def load_surveys(root):
+    """The survey capture comparison files of the tree: none or one, each checked strictly."""
+    paths = sorted(glob.glob(os.path.join(root, *SURVEY_GLOB)))
+    rels = [os.path.relpath(p, root).replace(os.sep, "/") for p in paths]
+    if len(paths) > 1:
+        raise DataError("more than one survey comparison file: {}".format(", ".join(rels)))
+    out = []
+    for path, rel in zip(paths, rels):
+        try:
+            with open(path, "rb") as h:
+                r = json.loads(h.read().decode("utf-8"))
+        except (ValueError, OSError) as e:
+            raise DataError("{}: {}".format(rel, e)) from None
+        check_survey(rel, os.path.basename(os.path.dirname(os.path.dirname(path))), r)
+        out.append((rel, r))
+    return out
+
+
+def survey_block(surveys):
+    """The counts of the survey capture comparison, always with its label; no total."""
+    if not surveys:
+        return "No survey capture comparison is recorded."
+    rel, r = surveys[0]
+    if r["every_row_has_a_counterpart"]:
+        rows = "Every row on each side had its counterpart on the other side."
+    else:
+        rows = "Not every row on each side had a counterpart on the other side, so the comparison fails as a whole."
+    head = ("A survey capture comparison, never a result of record and never parity evidence, from `%s`. %s"
+            % (rel, rows))
+    m = r["members"]
+    body = [[k] + [fmt(m[c][k]) for c in CLASSES] for k in VERDICTS]
+    for reason in REASONS:
+        if reason in r["members_not_compared"]:
+            split = r["members_not_compared"][reason]
+            body.append(["not compared, reason %s" % reason] + [fmt(split[c]) for c in CLASSES])
+    return head + "\n\n" + table(["Members", "Blind", "Word selected", "Informed"], body)
 
 
 def table(header, rows):
@@ -106,7 +194,7 @@ def load_rerun(root, rel):
 
 def units_table(root, results):
     if not results:
-        return "No result file exists yet, so no unit has a row. A unit is Not started until its `summary.json` is committed."
+        return "No unit result file exists yet, so no unit has a row. A unit is Not started until its `summary.json` is committed."
     header = ["Unit", "Rung", "Status", "Rung label", "Cases compared (in contract)", "Differing (cases / values)",
               "Call records matching", "Mutants killed", "Re-run", "Source"]
     rows = []
@@ -146,7 +234,7 @@ def pairing_table(results):
                      n(pa, "exact"), n(pa, "normalized"), n(pa, "unmatched"), n(ca, "boots"),
                      yes(ca, "records_identical"), yes(ca, "dumps_identical"), "`%s`" % rel])
     if not rows:
-        return "No result file records an interface pairing or a calibration yet."
+        return "No unit result file records an interface pairing or a calibration yet."
     return table(["Unit", "Parameters (original / rewrite)", "Exact", "Normalized", "Unmatched", "Boots",
                   "Records identical", "Dumps identical", "Source"], rows)
 
@@ -175,7 +263,7 @@ def notes_table(results):
         for x in r.get("not_rebuilt", []):
             rows.append([u, "not rebuilt", x])
     if not results:
-        return "No result file exists yet, so there are no notes."
+        return "No unit result file exists yet, so there are no notes."
     if not rows:
         return "The result files state no blocker, stand-in, qualifier or surviving mutant."
     return table(["Unit", "Kind", "Text"], [[a, b, c.replace("|", "/")] for a, b, c in rows])
@@ -185,7 +273,7 @@ def label_block(results):
     """The README label block, one per unit; with no result file, the empty form."""
     if not compared_any(results):
         body = "\n".join([
-            "Status: none (%s)   [computed from %d result files; re-run: none]" % (EMPTY_LINE, len(results)),
+            "Status: none (%s)   [computed from %d unit result files; re-run: none]" % (EMPTY_LINE, len(results)),
             "Judge: none named; no result file records a compared case",
             "Data: none measured",
             "Identity: none",
@@ -219,9 +307,9 @@ def label_block(results):
     return "```text\n" + "\n\n".join(blocks) + "\n```"
 
 
-def gen_blocks(root, results):
+def gen_blocks(root, results, surveys=()):
     return {"units": units_table(root, results), "label": label_block(results),
-            "pairing": pairing_table(results), "notes": notes_table(results)}
+            "pairing": pairing_table(results), "notes": notes_table(results), "survey": survey_block(surveys)}
 
 
 def md_files(root):
@@ -237,8 +325,9 @@ def md_files(root):
 def build(root=ROOT):
     """(outputs: rel path -> text, unknown keys)."""
     results = load_results(root)
+    surveys = load_surveys(root)
     facts = facts_for(results)
-    blocks = gen_blocks(root, results)
+    blocks = gen_blocks(root, results, surveys)
     outputs, unknown, used = {}, [], set()
     for rel in md_files(root):
         with open(os.path.join(root, rel), "rb") as h:
@@ -261,6 +350,8 @@ def build(root=ROOT):
         outputs[rel] = G_RE.sub(gsub, F_RE.sub(fsub, text))
     doc = {k: {"value": v[0], "source": v[1]} for k, v in sorted(facts.items())}
     doc["result_files"] = {"value": [rel for rel, _ in results], "source": "parity/*/results/summary.json"}
+    doc["survey_comparison_files"] = {"value": [rel for rel, _ in surveys],
+                                      "source": "parity/*/results/survey_comparison.json"}
     outputs[FACTS] = json.dumps(doc, indent=2, sort_keys=True) + "\n"
     return outputs, unknown, used
 

@@ -1,0 +1,14 @@
+{
+  "unit": "param-registration",
+  "comparison": "survey capture comparison",
+  "label": "never a result of record, never parity evidence",
+  "every_row_has_a_counterpart": true,
+  "members": {
+    "blind": {"compared": 367, "equal": 367, "different": 0},
+    "word_selected": {"compared": 9, "equal": 9, "different": 0},
+    "informed": {"compared": 222, "equal": 222, "different": 0}
+  },
+  "members_not_compared": {
+    "form": {"blind": 0, "word_selected": 0, "informed": 4}
+  }
+}

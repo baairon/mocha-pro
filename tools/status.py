@@ -5,6 +5,7 @@ Usage: status.py result.json [...]   Prints one line per file and a totals row.
 Exit codes: 0 the lines were printed; 2 usage; 3 a file that cannot be read or is not JSON.
 Python 3 standard library only. Only the allowed status wording is printed: no claim that work is finished,
 no bare "bit exact", no percentages and no merged counts.
+A survey capture comparison file (docs/data/survey_comparison_schema.json) gets one fixed line and no status.
 """
 import json, os, sys
 from datetime import datetime, timezone
@@ -17,6 +18,13 @@ DEPTHS = (8, 16, 32)
 BYTES_PER_PIXEL = {8: 4, 16: 8, 32: 16}  # rgba, rgba64le, gbrapf32le (docs/handoff.md frame contract)
 FRAME_MAX_BYTES = 4 * 1024 ** 3  # a frame is at most 4 GiB
 CASE_FLOOR = 150  # the fewest compared cases a module may have and still match
+SURVEY = "survey capture comparison"
+SURVEY_LINE = ("not a unit result file: a survey capture comparison, never a result of record, never parity evidence; "
+               "no status is computed")
+
+
+def survey(r):
+    return isinstance(r, dict) and r.get("comparison") == SURVEY
 
 
 def _g(d, *path, default=0):
@@ -329,17 +337,26 @@ def main(argv):
     if any(a in ("-h", "--help") for a in argv):
         print("usage: status.py result.json [...]", file=sys.stderr)
         return 2
-    rs, rr = [], []
+    rs, rr, sv = [], [], []
     for p in argv:
         q = p + ".rerun.json"
         try:
-            rs.append(read_json(p))
+            r = read_json(p)
+            if survey(r):
+                sv.append("%s | %s" % (r.get("unit", "?"), SURVEY_LINE))
+                continue
+            rs.append(r)
             rr.append(read_json(q) if os.path.exists(q) else None)
         except (OSError, ValueError) as e:  # ValueError covers JSON and UTF-8 decode errors
             bad = q if rs and len(rr) < len(rs) else p
             print("status: cannot read %s: %s" % (bad, e), file=sys.stderr)
             return 3
-    print(report(rs, rr) if rs else "Not started (no result file)")
+    for x in sv:
+        print(x)
+    if rs:
+        print(report(rs, rr))
+    else:
+        print("totals: none (0 cases compared)" if sv else "Not started (no result file)")
     return 0
 
 

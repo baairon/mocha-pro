@@ -8,7 +8,7 @@ This page defines parity for the rewrite, describes how it is checked against th
 
 **The interface comes first.** Before any output is compared, the parameters the original registers with its host are recorded in the emulator and paired field by field with a prediction that is sealed before the registration it is paired with is observed, and the original is booted twice to show that it is deterministic under the harness ([below](#the-interface-pairing-and-calibration)). Neither step carries a parity label: they show that the judge runs and that the two sides describe the same controls, not that any output agrees.
 
-**The original's registration is observed.** In the emulator the original runs to the end of its parameter setup and registers its parameters, and the harness records them. That observation comes from one boot on a reduced, declared host: it is not a result of record and not parity evidence, and a comparison with it carries no parity label ([below](#the-observed-registration)). No result file records a comparison with it, or a second boot that reaches the end of the parameter setup.
+**The original's registration is observed.** In the emulator the original runs to the end of its parameter setup and registers its parameters, and the harness records them. That observation comes from one boot on a reduced, declared host: it is not a result of record and not parity evidence, and a comparison with it carries no parity label ([below](#the-observed-registration)). One comparison with it is recorded, a survey capture comparison, which is never a result of record and never parity evidence ([below](#the-survey-capture-comparison)). No result file records a second boot that reaches the end of the parameter setup.
 
 **Shape data is predicted before any run of its cases.** For each case of the shape data check, the text the rewrite predicts for a shape at a list of times was written and sealed before any run of the original on a shape case, to be compared byte for byte with what the original reports ([below](#the-shape-data-check)). The rules behind the prediction are hypotheses, labelled as such, and no case has been compared.
 
@@ -16,10 +16,10 @@ This page defines parity for the rewrite, describes how it is checked against th
 
 ## Status
 
-Result files: <!--f:units_total-->0<!--/f-->. The status, one part per rung: <!--f:status_line-->method and preparation only: 0 cases compared<!--/f-->. The table is generated from each unit's result file, `parity/<unit>/results/summary.json`, and from the re-run file beside it, `summary.json.rerun.json`, if an independent re-run produced one.
+Unit result files: <!--f:units_total-->0<!--/f-->. The status, one part per rung: <!--f:status_line-->method and preparation only: 0 cases compared<!--/f-->. The table is generated from each unit's result file, `parity/<unit>/results/summary.json`, and from the re-run file beside it, `summary.json.rerun.json`, if an independent re-run produced one.
 
 <!--gen:units-->
-No result file exists yet, so no unit has a row. A unit is Not started until its `summary.json` is committed.
+No unit result file exists yet, so no unit has a row. A unit is Not started until its `summary.json` is committed.
 <!--/gen:units-->
 
 How to read a row:
@@ -90,10 +90,10 @@ The pairing then matches each predicted row with at most one observed row: by th
 
 The calibration boots the original twice, in separate processes, and compares the two call records and the two dumps of what it registered, byte for byte. A difference there means the harness is not deterministic, and nothing it produces is used as a reference until the cause is found.
 
-Equal tables do not mean equal output: two parameters can share a name and a range and still render differently, and only the grids can tell. The pairing and calibration figures of every result file that has them:
+Equal tables do not mean equal output: two parameters can share a name and a range and still render differently, and only the grids can tell. The pairing and calibration figures of every unit result file that has them:
 
 <!--gen:pairing-->
-No result file records an interface pairing or a calibration yet.
+No unit result file records an interface pairing or a calibration yet.
 <!--/gen:pairing-->
 
 ### The observed registration
@@ -111,7 +111,37 @@ A comparison with it is made this way. The rewrite's parameter table is set agai
 
 Such a comparison can show whether the two tables agree field by field on that host, with values compared as bits. It cannot show anything about an output, a render or a frame; whether a second boot registers the same table; what the original registers under other host answers or on a real machine; or whether two parameters that agree render alike, which only the grids can tell. Everything beyond the fields of that one registration stays unmeasured.
 
-A result of such a comparison is stated on these pages only from a result file whose rung is null, in the generated table of [the interface pairing](#the-interface-pairing-and-calibration), and always with the label above. No result file records one.
+A result of such a comparison is stated on these pages only from its own result file, never from a unit's `summary.json`, in the generated table of [the survey capture comparison](#the-survey-capture-comparison), and always with the label above.
+
+### The survey capture comparison
+
+One comparison with the observed registration is recorded. It is a survey capture comparison: the rewrite's parameter registration, built from its predicted table, set member by member against the one capture of the original's registration described above, with values compared as bits. It is never a result of record and never parity evidence. It has no rung and no parity label, it is not a case, and [the status rule](#the-status-rule) does not read it: the status stays as `tools/status.py` computes it from the unit result files.
+
+Each compared member is counted in one of three classes:
+
+- **Blind** members belong to rows whose prediction was sealed before any output of them was seen.
+- **Word selected** members are the members from which one input of the rewrite's side was chosen before the comparison, and the members the rewrite writes from that same input, so their agreement is not independent of that choice.
+- **Informed** members were seen before their prediction was written, so they are not predictions.
+
+The counts, generated from the comparison's result file, `parity/param-registration/results/survey_comparison.json`, in the fields of `docs/data/survey_comparison_schema.json`:
+
+<!--gen:survey-->
+A survey capture comparison, never a result of record and never parity evidence, from `parity/param-registration/results/survey_comparison.json`. Every row on each side had its counterpart on the other side.
+
+| Members | Blind | Word selected | Informed |
+|---|---|---|---|
+| compared | 367 | 9 | 222 |
+| equal | 367 | 9 | 222 |
+| different | 0 | 0 | 0 |
+| not compared, reason form | 0 | 0 | 4 |
+<!--/gen:survey-->
+
+The comparison has these limits:
+
+- **One capture.** The original's side comes from one boot on a reduced, declared host, with every limit of [the observed registration](#the-observed-registration). Whether a second boot registers the same table is not shown.
+- **Members not compared.** A member whose capture depends on the form of the host interface is not compared when the two sides ran in different forms; the counts give these members under the reason form.
+- **Agreement that is not independent.** The word selected members are not independent evidence. Both sides were decoded by one decoder, so a fault common to both would not show in these counts.
+- **What it cannot show.** Nothing about an output, a render or a frame, about what the original registers under other host answers or on a real machine, or about whether two parameters that agree render alike, which only the grids can tell.
 
 ### The shape data check
 
@@ -156,7 +186,7 @@ A specification is not a measurement, and no reading is one. A row that is only 
 | Not started | no result file; the unit has no row |
 | invalid result file | the file contradicts itself: identical and differing cases do not add up to the compared ones, or more cases are compared than are in contract. It gets no status |
 
-Two of these conditions close gaps that the case counts alone would leave open. A call-record check with 0 records compared is unmet, however the cases came out. A result file whose rung is null, one that carries only the interface pairing and the calibration, is never a parity unit: it cannot reach Matches or Verified, and the totals print it on a line of its own, never inside the count of a rung.
+Two of these conditions close gaps that the case counts alone would leave open. A call-record check with 0 records compared is unmet, however the cases came out. A result file whose rung is null, one that carries only the interface pairing and the calibration, is never a parity unit: it cannot reach Matches or Verified, and the totals print it on a line of its own, never inside the count of a rung. The result file of [the survey capture comparison](#the-survey-capture-comparison) is not read by the rule at all.
 
 The rung label is computed apart from the status. There is no label when the tolerance is not 0 or no case is compared. A call-record rung is labelled when call records were compared and all match. An output rung is labelled only with 0 differing cases and values, and its full label needs the evidence floor of the method: enough cases and values for the size of a case, every branch taken both ways or unreached with a reason, every allowed value class present, every listed arithmetic site killed by a mutant, the survivor rule, a control build that matches the release build, and no suspended stand-in. A file that misses a floor item gets the thin form of the label with the unmet items listed. The exact numbers are in `tools/status.py`. A re-run counts only when it is dated after the result.
 
@@ -166,6 +196,7 @@ The rung label is computed apart from the status. There is no label when the tol
 
 - Every factual line is MEASURED, which names the result file that holds the number, or INFERRED, which means specified or reasoned.
 - The allowed claim is "matches the emulated original", always with the rung, the counts and the judge.
+- A survey capture comparison is stated only with its label, never as parity, a match or a result of record.
 - Never used before a rung's gates pass: a word that says the work is at its end, "identical to the original", "matches the original" while the judge is an emulator, a share of a product, or a count added across rungs.
 - When a claim falls, the record says what is withdrawn, what still stands and why.
 
@@ -239,10 +270,11 @@ The original plug-in, the Windows system libraries for the emulator's file syste
 |---|---|
 | unit | one measured part of the plug-in's behaviour, checked on its own: an id, an entry, the rewrite code that answers it; the totals lines call it a module |
 | judge | the engine that runs the original: here an emulator that follows the architecture manual, not silicon |
-| result file | the machine-written record of one unit at one rung, in the fields of `docs/data/result_schema.json` |
+| result file | the machine-written record of one unit at one rung, in the fields of `docs/data/result_schema.json`; the survey capture comparison has one result file of its own form, in the fields of `docs/data/survey_comparison_schema.json`, which is not a unit's |
 | rung | a level of the measurement ladder: what was compared, and how much it lets a claim say |
 | predicted table | the rewrite's table of the plug-in's parameters, written and sealed before the registration it is paired with is observed |
 | observed registration | the parameters the original registers with the mock host in the emulator, as the harness records them; an observation on a reduced, declared host, not a result of record and not parity evidence |
+| survey capture comparison | the comparison of the rewrite's parameter registration with the one capture of the observed registration, its members counted as blind, word selected or informed; never a result of record, never parity evidence, never a case |
 | pairing | the match of the predicted table with the table the original registers, name by name, fields as bits |
 | calibration | two boots of the original that must give the same call record and the same dump |
 | shape case | a text file that describes one contour stored as keyframes and the times at which to query it, read by `shape-predict` |
@@ -264,5 +296,5 @@ The original plug-in, the Windows system libraries for the emulator's file syste
 Taken from each unit's result file: its blockers, stand-ins, logic-parity count, qualifiers, surviving mutants and the paths it leaves unrebuilt.
 
 <!--gen:notes-->
-No result file exists yet, so there are no notes.
+No unit result file exists yet, so there are no notes.
 <!--/gen:notes-->

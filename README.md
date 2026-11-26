@@ -6,17 +6,17 @@ The repository holds the method, the tools that compute and check its status, an
 
 ## Status
 
-- **Parity.** Result files: <!--f:units_total-->0<!--/f-->. The status, one part per rung, since units are never counted across rungs: <!--f:status_line-->method and preparation only: 0 cases compared<!--/f-->. The method is under [Parity](#parity).
+- **Parity.** Unit result files: <!--f:units_total-->0<!--/f-->. The status, one part per rung, since units are never counted across rungs: <!--f:status_line-->method and preparation only: 0 cases compared<!--/f-->. The method is under [Parity](#parity).
 - **The original in the emulator.** The original has run in the emulator only as far as the end of its parameter setup, and no render command of it has run in the emulator. [Parity](#parity) states what of it is observed there, and [Limits](#limits) what that observation can show.
 - **Pairing and shape data.** `effect-params` holds the rewrite's side of the interface pairing, and `shape-model` and `shape-canon` that of the shape data check; [Parity](#parity) describes both checks.
 - **Stages.** `mocha-stage` is the stage program of this repository; [Stages](#stages) lists each of its stages with its family and what it computes.
 - **Handoff.** Steps 1 and 4 of joining the handoff convention of twixtor and sapphire are taken, step 2 in part, and steps 3 and 5 are not ([Handoff](#handoff)).
 - **Usage.** [Build](#build) builds the programs and [Quick start](#quick-start) runs a stage on synthetic frames; the [reference](docs/reference.md) lists every command, stage, parameter, layer file and exit code.
 
-The figures of the Parity line above and the table below are generated from the result files, `parity/<unit>/results/summary.json`, by `tools/gen_docs.py`, with the rule of `tools/status.py`. A result file never states its own status.
+The figures of the Parity line above and the table below are generated from the unit result files, `parity/<unit>/results/summary.json`, by `tools/gen_docs.py`, with the rule of `tools/status.py`. A result file never states its own status.
 
 <!--gen:units-->
-No result file exists yet, so no unit has a row. A unit is Not started until its `summary.json` is committed.
+No unit result file exists yet, so no unit has a row. A unit is Not started until its `summary.json` is committed.
 <!--/gen:units-->
 
 The statuses Matches and Verified, how to read a row and the label block that heads every unit's record are in [Reading the status](#reading-the-status).
@@ -58,7 +58,7 @@ The judge is the original itself: its unmodified plug-in file runs in a CPU emul
 
 What is in the repository, by role ([Crate map](#crate-map) has every crate):
 
-- **The method and its tools.** The repository holds the definition of parity and the rules of a result ([Parity](#parity)), the fields of a result file in `docs/data/result_schema.json`, and three Python tools: `tools/status.py` computes a unit's status from its result file, `tools/gen_docs.py` writes every parity figure and table of these pages from the result files, and `tools/check_docs.py` checks the pages ([Python tools](#python-tools)).
+- **The method and its tools.** The repository holds the definition of parity and the rules of a result ([Parity](#parity)), the fields of a result file in `docs/data/result_schema.json` and those of the survey capture comparison file in `docs/data/survey_comparison_schema.json`, and three Python tools: `tools/status.py` computes a unit's status from its result file, `tools/gen_docs.py` writes every parity figure and table of these pages from the result files, and `tools/check_docs.py` checks the pages ([Python tools](#python-tools)).
 - **The rewrite's side of the interface pairing and the shape data check.** `crates/effect-params` holds the table format and the pairing for the first step of the method, the interface pairing; `crates/shape-model` and `crates/shape-canon`, with the command `shape-predict`, compute the predicted dump of a shape case for the [shape data check](docs/parity.md#the-shape-data-check).
 - **A plug-in shell.** `crates/effect-shell` is the host side shell of an After Effects effect plug-in, with this project's own definitions of the host's structures; it holds no engine.
 - **Frames, masks and stages.** `crates/frame-io` holds the raw frame contract of the [handoff convention](docs/handoff.md) with the commands `frame-gen` and `frame-cmp`; `crates/mask-seq` defines `mask-1`, a container form of this repository's own for a sequence of one-channel mask frames, with the command `mask-validate`; and `crates/stage-cli` builds `mocha-stage`, the stage program.
@@ -108,7 +108,7 @@ target/release/mocha-stage apply resample-scale --width 64 --height 36 --depth 1
 | Page | Holds |
 |---|---|
 | [docs/reference.md](docs/reference.md) | Everything the repository holds: the crate map, the table format and the pairing, `effect-shell`, the shape model with the case and dump forms and `shape-predict`, the mask sequence form and `mask-validate`, the frame contract and the frame tools, `mocha-stage` with every stage, parameter, layer file and exit code, the generic crates with their sources, the build, the documentation tools and the tests. |
-| [docs/parity.md](docs/parity.md) | The definition of parity, the way it is measured, the harness that runs the original, the observed registration of the original's parameters, the status rule, the limits of what a result says and the [terms](docs/parity.md#terms) of the method, with the generated status, pairing and notes tables. |
+| [docs/parity.md](docs/parity.md) | The definition of parity, the way it is measured, the harness that runs the original, the observed registration of the original's parameters, the status rule, the limits of what a result says and the [terms](docs/parity.md#terms) of the method, with the generated status, pairing and notes tables and the counts of the survey capture comparison. |
 | [docs/reproduce.md](docs/reproduce.md) | Which checks need nothing but this repository, which inputs you bring yourself, and the steps that produce the evidence again. |
 | [docs/handoff.md](docs/handoff.md) | Where the repository stands against the handoff convention that twixtor and sapphire share: the stage program with its self test stage and its generic stages, the layer forms, the frame tools, the file forms a peer can exchange, the exit codes, and which steps of joining are taken. |
 | [docs/internals/README.md](docs/internals/README.md) | How the crates are put together, the rules their code keeps, every check with what it should print, and what a change has to leave passing. |
@@ -118,6 +118,7 @@ target/release/mocha-stage apply resample-scale --width 64 --height 36 --depth 1
 | File | Holds |
 |---|---|
 | `docs/data/result_schema.json` | The fields of a result file. |
+| `docs/data/survey_comparison_schema.json` | The fields of the survey capture comparison file. |
 | `docs/data/facts.json` | Every generated figure with its value and source, written by `tools/gen_docs.py`. |
 | `docs/data/stage_<id with underscores>_interface.json` | One file for each generic stage: its arguments, streams, parameters, layers, geometry, sample rule and exit codes, with the rows that pin them. |
 | `docs/data/frame_tools_interface.json` | The arguments, streams, patterns and exit codes of `frame-gen` and `frame-cmp`. |
@@ -142,7 +143,7 @@ Each unit is checked three ways:
 
 Before any output is compared, the interface is paired. The parameters the original registers with its host are recorded in the emulator and matched field by field with the rewrite's prediction of them, which is to be written and sealed before the registration it is paired with is observed. The original is also booted twice, to show that the same inputs give the same call record and the same dump. Neither step carries a parity label ([parity: the interface pairing](docs/parity.md#the-interface-pairing-and-calibration)).
 
-The original's registration of its parameters is observed. Run in the emulator with its engine, its file unmodified on disk, the original sets itself up and registers its parameters with the mock host, and the harness records them; the record stays outside the repository. That observation comes from one boot on a reduced host whose answers are declared: it is not a result of record and not parity evidence, and a comparison with it carries no parity label. No result file records a comparison with it, or a second boot that reaches the end of the parameter setup ([parity: the observed registration](docs/parity.md#the-observed-registration)).
+The original's registration of its parameters is observed. Run in the emulator with its engine, its file unmodified on disk, the original sets itself up and registers its parameters with the mock host, and the harness records them; the record stays outside the repository. That observation comes from one boot on a reduced host whose answers are declared: it is not a result of record and not parity evidence, and a comparison with it carries no parity label. One comparison with it is recorded, a survey capture comparison, never a result of record and never parity evidence; [parity: the survey capture comparison](docs/parity.md#the-survey-capture-comparison) gives its counts and its limits. No result file records a second boot that reaches the end of the parameter setup ([parity: the observed registration](docs/parity.md#the-observed-registration)).
 
 Shape data is prepared like the interface pairing, with a sealed prediction. For each case of the shape data check, the text dump the rewrite predicts for a shape was written and sealed before any run of the original on a shape case and is kept private; the harness is built to have the original report the same shape in the same text, and the two are to be compared byte for byte. No case of it has run ([parity: the shape data check](docs/parity.md#the-shape-data-check)).
 
@@ -171,7 +172,7 @@ The label block heads every unit's record. Each line is computed from the result
 
 <!--gen:label-->
 ```text
-Status: none (method and preparation only: 0 cases compared)   [computed from 0 result files; re-run: none]
+Status: none (method and preparation only: 0 cases compared)   [computed from 0 unit result files; re-run: none]
 Judge: none named; no result file records a compared case
 Data: none measured
 Identity: none
@@ -359,8 +360,8 @@ All three run from the repository root with `python -I` and need the standard li
 
 | Tool | Does | Exit codes |
 |---|---|---|
-| `tools/status.py FILE...` | prints the status, rung label and re-run state of the result files named, then one totals line per rung; with no file, `Not started (no result file)` | 0 printed, 2 usage, 3 a file that cannot be read |
-| `tools/gen_docs.py` | writes every generated figure and table of `README.md` and `docs/`, and `docs/data/facts.json`, from the result files; `--check` writes nothing and exits 1 when a page is stale | 0 no drift, 1 drift or an unknown key, 2 usage, 3 a result file that cannot be read |
+| `tools/status.py FILE...` | prints the status, rung label and re-run state of the unit result files named, then one totals line per rung, and one fixed line with no status for a survey capture comparison file; with no file, `Not started (no result file)` | 0 printed, 2 usage, 3 a file that cannot be read |
+| `tools/gen_docs.py` | writes every generated figure and table of `README.md` and `docs/`, and `docs/data/facts.json`, from the result files; `--check` writes nothing and exits 1 when a page is stale | 0 no drift, 1 drift or an unknown key, 2 usage, 3 a result file that cannot be read, or a survey capture comparison file that breaks its schema |
 | `tools/check_docs.py` | reads every page for stale figures, broken links, the status wording and hexadecimal addresses, and every text file for characters outside ASCII, dash characters and secrets | 0 no findings, 1 findings, 2 usage or a term list that cannot be used |
 
 Two more checks of `tools/check_docs.py`, one for words about how the repository was made and one for names that belong outside it, take their terms from a list kept outside the repository; without that list each prints NOT RUN and adds no finding ([reference: page checks](docs/reference.md#page-checks)).
@@ -447,7 +448,7 @@ What the method cannot show, whatever the results say:
 
 | Limit | What it means |
 |---|---|
-| Nothing compared | The status reads <!--f:status_line-->method and preparation only: 0 cases compared<!--/f-->. There is no reference output and no label, and no crate computes an output of the plug-in. The original's registration of its parameters is observed; no result file records a comparison with it. |
+| Nothing compared | The status reads <!--f:status_line-->method and preparation only: 0 cases compared<!--/f-->. There is no reference output and no label, and no crate computes an output of the plug-in. The original's registration of its parameters is observed, and one survey capture comparison with it is recorded; it is not a case, has no parity label and is never parity evidence ([parity: the survey capture comparison](docs/parity.md#the-survey-capture-comparison)). |
 | The observed registration | The original's registration of its parameters comes from one boot on a reduced host whose answers are declared. It is not a result of record and not parity evidence, and a comparison with it carries no parity label. Such a comparison can say whether the two tables agree field by field on that host. It says nothing about any output or render, about a second boot, or about what the original registers under other host answers or on a real machine; all of that stays unmeasured ([parity: the observed registration](docs/parity.md#the-observed-registration)). |
 | One judge | Every reference comes from one emulator. An emulator bug is common to both sides of a comparison: it can make a wrong rewrite look right, or a right one look wrong. Until a routine that the original implements twice has run on a second engine, every result reads "single judge, not cross-checked". |
 | Emulator, not silicon | The emulator follows the architecture manual. Where real processors differ from it (estimate instructions, NaN payloads, which feature tier a dispatcher picks), nothing is claimed. |

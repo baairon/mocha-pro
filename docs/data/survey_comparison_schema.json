@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Survey capture comparison: the counts of the comparison of the rewrite's parameter registration with one capture of the original's registration; never a result of record, never parity evidence, never a unit",
+  "description": "The form of parity/<unit>/results/survey_comparison.json. It is never a summary.json, tools/status.py computes no status, no rung label and no unit count from it, and tools/gen_docs.py prints it only in the survey block. At most one such file exists in the tree.",
+  "type": "object",
+  "required": ["unit", "comparison", "label", "every_row_has_a_counterpart", "members", "members_not_compared"],
+  "additionalProperties": false,
+  "$defs": {
+    "count": {"type": "integer", "minimum": 0},
+    "verdicts": {
+      "type": "object",
+      "required": ["compared", "equal", "different"],
+      "additionalProperties": false,
+      "properties": {
+        "compared": {"$ref": "#/$defs/count"},
+        "equal": {"$ref": "#/$defs/count"},
+        "different": {"$ref": "#/$defs/count"}
+      },
+      "description": "equal + different == compared"
+    },
+    "split": {
+      "type": "object",
+      "required": ["blind", "word_selected", "informed"],
+      "additionalProperties": false,
+      "properties": {
+        "blind": {"$ref": "#/$defs/count"},
+        "word_selected": {"$ref": "#/$defs/count"},
+        "informed": {"$ref": "#/$defs/count"}
+      }
+    }
+  },
+  "properties": {
+    "unit": {"type": "string", "description": "the folder name under parity/"},
+    "comparison": {"const": "survey capture comparison"},
+    "label": {"const": "never a result of record, never parity evidence"},
+    "every_row_has_a_counterpart": {"type": "boolean", "description": "true when every row on each side has a counterpart on the other side; no row count is recorded"},
+    "members": {
+      "type": "object",
+      "required": ["blind", "word_selected", "informed"],
+      "additionalProperties": false,
+      "properties": {
+        "blind": {"$ref": "#/$defs/verdicts"},
+        "word_selected": {"$ref": "#/$defs/verdicts"},
+        "informed": {"$ref": "#/$defs/verdicts"}
+      },
+      "description": "blind: rows whose prediction was sealed before any output of them was seen; word_selected: members from which one input of the rewrite's side was chosen, or that the rewrite writes from that input, so their agreement is not independent; informed: members seen before their prediction was written, so not predictions"
+    },
+    "members_not_compared": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "form": {"$ref": "#/$defs/split"}
+      },
+      "description": "per reason; form: the capture of the member depends on the form of the host interface, and the two sides ran in different forms"
+    }
+  }
+}

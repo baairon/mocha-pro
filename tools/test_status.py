@@ -674,5 +674,58 @@ class ExitCodes(unittest.TestCase):
         self.assertIn("status: cannot read", err)
 
 
+def survey_file():
+    """A survey capture comparison file with invented counts."""
+    return {"unit": "u-survey", "comparison": "survey capture comparison",
+            "label": "never a result of record, never parity evidence", "every_row_has_a_counterpart": True,
+            "members": {"blind": {"compared": 7, "equal": 7, "different": 0},
+                        "word_selected": {"compared": 2, "equal": 1, "different": 1},
+                        "informed": {"compared": 3, "equal": 3, "different": 0}},
+            "members_not_compared": {"form": {"blind": 0, "word_selected": 0, "informed": 1}}}
+
+
+class SurveyFile(unittest.TestCase):
+    def run_status(self, *args):
+        p = subprocess.run([sys.executable, "-I", status.__file__] + list(args), capture_output=True, text=True)
+        return p.returncode, p.stdout, p.stderr
+
+    def test_survey_file_alone(self):
+        with scratch_dir() as d:
+            p = os.path.join(d, "survey_comparison.json")
+            with open(p, "w") as h:
+                json.dump(survey_file(), h)
+            code, out, err = self.run_status(p)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(out.splitlines(), ["u-survey | " + status.SURVEY_LINE, "totals: none (0 cases compared)"])
+        for word in ("In progress", "Matches", "Verified", "rung label", "not a parity unit", "modules"):
+            self.assertNotIn(word, out)
+
+    def test_survey_file_beside_a_unit_file(self):
+        with scratch_dir() as d:
+            u = os.path.join(d, "u1.json")
+            with open(u, "w") as h:
+                json.dump(counted(), h)
+            sp = os.path.join(d, "survey_comparison.json")
+            with open(sp, "w") as h:
+                json.dump(survey_file(), h)
+            code0, alone, _ = self.run_status(u)
+            code, out, err = self.run_status(sp, u)
+        self.assertEqual((code0, code), (0, 0), err)
+        head, rest = out.split("\n", 1)
+        self.assertEqual(head, "u-survey | " + status.SURVEY_LINE)
+        self.assertEqual(rest, alone)
+
+    def test_unit_file_with_another_comparison_value(self):
+        with scratch_dir() as d:
+            u = os.path.join(d, "u1.json")
+            r = counted()
+            r["comparison"] = "other"
+            with open(u, "w") as h:
+                json.dump(r, h)
+            code, out, err = self.run_status(u)
+        self.assertEqual(code, 0, err)
+        self.assertNotIn(status.SURVEY_LINE, out)
+
+
 if __name__ == "__main__":
     unittest.main()
