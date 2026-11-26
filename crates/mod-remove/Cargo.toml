@@ -1,0 +1,9 @@
+[package]
+name = "mod-remove"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Clean-room frame producer for layer removal; every unspecified stage is an explicit error."
+
+[dependencies]

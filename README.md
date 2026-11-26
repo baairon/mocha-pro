@@ -2,7 +2,7 @@
 
 An independent open source reimplementation of the Mocha Pro 2024 plug-in, written in Rust. Its output is to be judged case by case against the original plug-in running unmodified in an emulator, and the status computed from the result files reads: <!--f:status_line-->method and preparation only: 0 cases compared<!--/f--> ([parity](#parity)). It is not affiliated with or endorsed by any other company, product or library.
 
-The repository holds the method, the tools that compute and check its status, and twenty Rust crates. It reimplements no output of the plug-in: its frame stages are a self test that copies frames and generic stages that compute published methods and claim nothing about the plug-in.
+The repository holds the method, the tools that compute and check its status, and twenty-one Rust crates. It reimplements no output of the plug-in: its frame stages are a self test that copies frames and generic stages that compute published methods and claim nothing about the plug-in.
 
 ## Status
 
@@ -113,7 +113,7 @@ target/release/mocha-stage apply resample-scale --width 64 --height 36 --depth 1
 | [docs/handoff.md](docs/handoff.md) | Where the repository stands against the handoff convention that twixtor and sapphire share: the stage program with its self test stage and its generic stages, the layer forms, the frame tools, the file forms a peer can exchange, the exit codes, and which steps of joining are taken. |
 | [docs/internals/README.md](docs/internals/README.md) | How the crates are put together, the rules their code keeps, every check with what it should print, and what a change has to leave passing. |
 | [docs/internals/shape-crates.md](docs/internals/shape-crates.md) | The two shape crates: what they compute, the hypotheses with the code and the test behind each, and what a change to them has to keep. |
-| Crate READMEs | What one crate computes or offers, with its methods, sources and settings, for [`stage-cli`](crates/stage-cli/README.md), [`effect-shell`](crates/effect-shell/README.md), [`pixel-format`](crates/pixel-format/README.md), [`contour-eval`](crates/contour-eval/README.md), [`coverage-raster`](crates/coverage-raster/README.md), [`planar-xform`](crates/planar-xform/README.md), [`resample`](crates/resample/README.md), [`lens-model`](crates/lens-model/README.md), [`soft-edge`](crates/soft-edge/README.md), [`sphere-reorient`](crates/sphere-reorient/README.md), [`mesh-warp`](crates/mesh-warp/README.md), [`blend-ops`](crates/blend-ops/README.md), [`key-eval`](crates/key-eval/README.md), [`planar-track`](crates/planar-track/README.md) and [`eye-layout`](crates/eye-layout/README.md). |
+| Crate READMEs | What one crate computes or offers, with its methods, sources and settings, for [`stage-cli`](crates/stage-cli/README.md), [`effect-shell`](crates/effect-shell/README.md), [`pixel-format`](crates/pixel-format/README.md), [`contour-eval`](crates/contour-eval/README.md), [`coverage-raster`](crates/coverage-raster/README.md), [`planar-xform`](crates/planar-xform/README.md), [`resample`](crates/resample/README.md), [`lens-model`](crates/lens-model/README.md), [`soft-edge`](crates/soft-edge/README.md), [`sphere-reorient`](crates/sphere-reorient/README.md), [`mesh-warp`](crates/mesh-warp/README.md), [`blend-ops`](crates/blend-ops/README.md), [`key-eval`](crates/key-eval/README.md), [`planar-track`](crates/planar-track/README.md), [`eye-layout`](crates/eye-layout/README.md) and [`mod-remove`](crates/mod-remove/README.md). |
 
 | File | Holds |
 |---|---|
@@ -245,7 +245,7 @@ Every stage takes depths 8, 16 and 32 and writes the depth it reads. A `declared
 
 A generic stage computes a published method under explicit configuration. Its manifest entry says `"family": "generic"`, and its description ends with the sentence that it is not compared with any product. It is not a unit, carries no status and enters no parity figure. A stage that computes something of the plug-in is added only after its unit has been compared with the original under the [parity](docs/parity.md) rules, and it then carries that unit's status.
 
-`blend-ops` and `key-eval` are offered as libraries only: no stage composites two frame streams, and the key files are evaluated by the stage program itself. `effect-params`, `shape-model`, `shape-canon`, `mask-seq`, `frame-io` and `eye-layout` work on tables, shapes, mask folders, the frame contract and eye layouts, not as stages.
+`blend-ops` and `key-eval` are offered as libraries only: no stage composites two frame streams, and the key files are evaluated by the stage program itself. `effect-params`, `shape-model`, `shape-canon`, `mask-seq`, `frame-io`, `eye-layout` and `mod-remove` work on tables, shapes, mask folders, the frame contract, eye layouts and the frames that replace a layer, not as stages.
 
 ### Crate map
 
@@ -273,12 +273,15 @@ Workspace members of `Cargo.toml`: every folder under `crates/`, version 0.1.0, 
 | `crates/key-eval` | library | values given by keys at a time: hold, linear, Hermite and Bezier keys, and the rules before the first key and after the last | [`key-eval`](docs/reference.md#key-eval) |
 | `crates/planar-track` | library | the tracking of a planar region through a sequence of grey level images by direct image alignment, from published methods | [`planar-track`](docs/reference.md#planar-track) |
 | `crates/eye-layout` | library | the layout of one or two eyes in a frame as pure functions: a selector table that the caller supplies, the rectangle of one eye in a packed frame, layer and eye resolution, and the arguments of the two engine calls | [`eye-layout`](docs/reference.md#eye-layout) |
+| `crates/mod-remove` | library | the frames that replace a layer, produced from other frames of a clip: a source index, soft weight maps, a brightness fit, the synthesis with a spread pass fallback, and a frame driver with its preconditions and composite | [`mod-remove`](docs/reference.md#mod-remove) |
 
 `effect-shell` depends on `effect-params`, `shape-canon` on `shape-model`, `pixel-format` on `frame-io`, and `stage-cli` on the crates its stages run (the Crates column of [Stages](#stages)), each by its path in the workspace. Only `effect-shell` has `unsafe` code, which it uses at the host interface and in its freestanding build. The values that the tests of the crates use are stated under [Tests](#tests).
 
 The generic crates (`pixel-format`, `contour-eval`, `coverage-raster`, `planar-xform`, `resample`, `lens-model`, `soft-edge`, `sphere-reorient`, `mesh-warp`, `blend-ops`, `key-eval`, `planar-track`) hold every choice their published sources leave open as a field of an explicit configuration, with a default that claims nothing about any program. The tests of `planar-track` hold its results on a sequence within a stated tolerance of the truth, never as exact bits; how a track is to be compared with the original is stated under [Limits](#limits).
 
 `eye-layout` holds no selector table of its own: the caller supplies every row and every separator position, and `RoleTable::sample()` is a made up table for tests, examples and documentation.
+
+`mod-remove` takes its rendering mode flag and any precondition text from the caller: the caller supplies the flag of `FrameInputs` and the texts of `PreconditionTexts`, a `Precondition` with no text from the caller carries a `Display` text of the crate's own, the default readings of `FillConfig` are the crate's own, and `FrameInputs::sample()` and `PreconditionTexts::sample()` are made up for tests, examples and documentation.
 
 Outside the workspace: `contracts/` (the convention's folder, held byte for byte as twixtor publishes it at commit 8087d06 and not edited here), `tools/` (the three Python tools and their tests) and `docs/`.
 
@@ -408,7 +411,7 @@ python -I tools/gen_docs.py --check
 python -I tools/check_docs.py
 ```
 
-- **The crates.** `cargo test` builds the crates of the workspace and runs their tests: the unit tests, the test files of each crate, and the tests that run the built binaries. Every name and value in them is invented, apart from six published NIST test vectors in the SHA-256 tests of `mask-seq`, the sizes, offsets and constants of the host's interface that the tests of `effect-shell` pin, and the constants and default readings of the layout description that the tests of `eye-layout` pin, and no test involves the original.
+- **The crates.** `cargo test` builds the crates of the workspace and runs their tests: the unit tests, the test files of each crate, and the tests that run the built binaries. Every name and value in them is invented, apart from six published NIST test vectors in the SHA-256 tests of `mask-seq`, the sizes, offsets and constants of the host's interface that the tests of `effect-shell` pin, the constants and default readings of the layout description that the tests of `eye-layout` pin, and the constants of the specification that the tests of `mod-remove` pin, and no test involves the original.
 - **The interface files.** For each generic stage, for the two frame tools, for `shape-predict` and for `mask-validate`, a test runs the built program for every row of its interface file under `docs/data/`, so a change to an exit code or a report line fails `cargo test` until the file follows it.
 - **The pages.** Two crate tests read `docs/reference.md`: one loads the example of the table format, the other the example manifest of the mask sequence form, so an edit of the table example that the loader would refuse, or any edit of the example manifest, fails `cargo test`. `gen_docs.py --check` exits 1 on a stale figure, and `check_docs.py` on a page or a text file that breaks a rule.
 - **The tools.** Each Python tool has a test file beside it, on invented fixtures built in temporary directories. One test of `tools/test_check_docs.py` reads the term list kept outside the repository and is skipped when no list is named.

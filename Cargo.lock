@@ -50,6 +50,10 @@ name = "mesh-warp"
 version = "0.1.0"
 
 [[package]]
+name = "mod-remove"
+version = "0.1.0"
+
+[[package]]
 name = "pixel-format"
 version = "0.1.0"
 dependencies = [
