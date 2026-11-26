@@ -169,7 +169,7 @@ offset. No text or file of the host's SDK is included.
 ## Unit table and render layouts
 
 `src/units.rs` lets another crate supply handlers for the commands SEQUENCE_SETUP, SEQUENCE_SETDOWN,
-GLOBAL_SETDOWN, RENDER, SMART_PRE_RENDER and SMART_RENDER. A handler receives the raw pointers of
+GLOBAL_SETDOWN, RENDER, SMART_PRE_RENDER, SMART_RENDER and ARBITRARY_CALLBACK (command 22). A handler receives the raw pointers of
 the command (they may be null; the handler owns every check). A command without a handler falls to
 the default case and returns 0. `entry_with_units` is the entry logic over a table; a panic in a
 handler gives `ERR_INTERNAL_STRUCT_DAMAGED`. The shell's own `EffectMain` uses the table given to
@@ -181,3 +181,8 @@ shell does not export `EffectMain`: the crate that owns the table exports its ow
 render request, the pre render and smart render extra records and callbacks, the world record, the
 utility callback table by slot, the typed handle suite, the checkout and checkin callbacks of the
 interact table), with size and offset tests. The crate holds no plug-in data and no engine.
+
+`src/arb_layout.rs` holds the extra record of the arbitrary data callback command (48 bytes, one arm
+per sub selector, the refcon first in every arm), the sub selector and compare result numbers, and
+the typed handle members of the older utility callback table, with size and offset tests from the
+recorded layout tables. It holds no behaviour: the crate that serves the command decides every step.

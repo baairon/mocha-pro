@@ -150,8 +150,14 @@ pub fn parse_int(s: &str) -> Option<i64> {
         None => (false, s),
     };
     let v = if let Some(h) = body.strip_prefix("0x") {
+        if h.starts_with(['+', '-']) {
+            return None;
+        }
         i64::from_str_radix(h, 16).ok()?
     } else {
+        if neg && body.starts_with(['+', '-']) {
+            return None;
+        }
         body.parse::<i64>().ok()?
     };
     Some(if neg { -v } else { v })
@@ -235,7 +241,61 @@ fn pairs(rest: &str, line: usize) -> Result<Pairs, PlanError> {
 }
 
 fn num(v: &str, line: usize, key: &str) -> Result<i64, PlanError> {
-    parse_int(v).ok_or_else(|| PlanError {
+    if key == "refcon" {
+        // A full 64 bit word (see num_u64); the caller casts the bit pattern back to u64.
+        return num_u64(v, line, key).map(|n| n as i64);
+    }
+    let n = parse_int(v).ok_or_else(|| PlanError {
+        line,
+        message: format!("bad number for {key}: {v:?}"),
+    })?;
+    match key_range(key) {
+        Some((lo, hi)) if n < lo || n > hi => Err(PlanError {
+            line,
+            message: format!("{key} out of range: {n}"),
+        }),
+        _ => Ok(n),
+    }
+}
+
+/// The inclusive range of the field a key is stored in, so that the cast the caller applies after
+/// `num` never wraps. A key that is not listed is a flag or a free number and is not limited here.
+fn key_range(key: &str) -> Option<(i64, i64)> {
+    let u32_max = i64::from(u32::MAX);
+    match key {
+        "my_version" | "out_flags" | "out_flags2" | "register_ui" | "placeholder_flags" | "ui"
+        | "sdkflags" => Some((0, u32_max)),
+        "id" | "fs_flags" => Some((i64::from(i32::MIN), i64::from(i32::MAX))),
+        "ui_w" | "ui_h" | "precision" | "display" => {
+            Some((i64::from(i16::MIN), i64::from(i16::MAX)))
+        }
+        _ => None,
+    }
+}
+
+/// The reference constant, a pointer sized word: an unsigned decimal or `0x` hex body up to
+/// `u64::MAX`, stored as is, or a leading minus and such a body of magnitude at most 2 to the 63,
+/// stored as the 64 bit two's complement pattern. For every minus text that the signed parse of the
+/// other keys also accepts, this is the word that parse gives; magnitude 2 to the 63 is accepted
+/// here only, as the signed parse refuses it. A leading plus, a sign inside a hex body, a second
+/// sign, a body above 64 bits and a minus form above that magnitude are refused.
+fn num_u64(v: &str, line: usize, key: &str) -> Result<u64, PlanError> {
+    let t = v.trim();
+    let (neg, body) = match t.strip_prefix('-') {
+        Some(r) => (true, r),
+        None => (false, t),
+    };
+    let mag = match body.strip_prefix("0x") {
+        Some(h) if !h.starts_with(['+', '-']) => u64::from_str_radix(h, 16).ok(),
+        Some(_) => None,
+        None if body.starts_with(['+', '-']) => None,
+        None => body.parse::<u64>().ok(),
+    };
+    let r = match mag {
+        Some(m) if neg => (m <= 1u64 << 63).then(|| m.wrapping_neg()),
+        other => other,
+    };
+    r.ok_or_else(|| PlanError {
         line,
         message: format!("bad number for {key}: {v:?}"),
     })

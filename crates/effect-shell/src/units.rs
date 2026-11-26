@@ -1,7 +1,8 @@
-//! A table of command handlers supplied by another crate. The shell calls a handler for the
+//! A table of command handlers from another crate, which the shell calls for the arbitrary data and
 //! sequence, render and setdown commands when the table holds one; without a handler the command
 //! falls to the default case and returns 0. The table carries no plug-in fact.
 
+use crate::arb_layout::CMD_ARBITRARY_CALLBACK;
 use crate::layout::*;
 use crate::render_layout::*;
 use core::ffi::c_void;
@@ -29,6 +30,8 @@ pub struct UnitTable {
     pub render: Option<UnitFn>,
     pub pre_render: Option<UnitFn>,
     pub smart_render: Option<UnitFn>,
+    /// The arbitrary data callback command (command 22).
+    pub arbitrary: Option<UnitFn>,
 }
 
 impl UnitTable {
@@ -39,6 +42,7 @@ impl UnitTable {
         render: None,
         pre_render: None,
         smart_render: None,
+        arbitrary: None,
     };
 
     /// The handler for a command number, if the command is one the table serves.
@@ -50,6 +54,7 @@ impl UnitTable {
             CMD_RENDER => self.render,
             CMD_SMART_PRE_RENDER => self.pre_render,
             CMD_SMART_RENDER => self.smart_render,
+            CMD_ARBITRARY_CALLBACK => self.arbitrary,
             _ => None,
         }
     }

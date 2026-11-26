@@ -352,6 +352,9 @@ pub fn parse_description(text: &str) -> Result<Vec<Property>, PiplError> {
             }
         }
         let at = |e: PiplError| PiplError(format!("line {}: {e}", n + 1));
+        if ws.is_empty() {
+            return err(format!("line {}: an id with no property line", n + 1));
+        }
         let cmd = ws[0].0.clone();
         let args = &ws[1..];
         if cmd == "signature" {
