@@ -1,0 +1,9 @@
+[package]
+name = "eye-layout"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Eye layouts as pure functions: a caller supplied selector table, packed eye rectangles, layer and eye resolution and the arguments of the two engine calls."
+
+[dependencies]
